@@ -290,5 +290,108 @@ wiz <- W5100(spi, cs, resetPin);
      * Returns: this
      * Parameters: none
 
+
+## Extended Example
+```squirrel
+#require "W5100.class.nut:1.0.0"
+
+// HARDWARE SETUP
+// ---------------------------------------------
+// CHIP SPI INFO
+    // supports spi mode 0 and 3
+    //  MSB first
+    // chip should support up to 14000
+
+speed <- 4000;
+spi <- hardware.spi257
+spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, speed);
+
+cs <- hardware.pin8;
+resetPin <- hardware.pin9;
+
+interruptPin <- hardware.pin1;
+
+// NETWORK & MEMORY SETTINGS
+// ---------------------------------------------
+
+gatewayIP <- [192, 168, 1, 1];
+subnetAddr <- [255, 255, 255, 0];
+
+wnIP <- [192, 168, 1, 2];
+wnHWAddr <- [0x00, 0x08, 0xDC, 0x00, 0x00, 0x01];
+
+microTechIP <- [192, 168, 1, 42];
+microTechPort <- [0x10, 0x92]; //4242
+microTechMac <- [0x00, 0xA0, 0x03, 0x09, 0x09, 0xA6]; //really the microTech
+// microTechMac <- [0x38, 0xC9, 0x86, 0x40, 0x60, 0x18]; // thunderbolt adapter computer
+
+networkSettings <-  { "gatewayIP"  : gatewayIP,
+                      "sourceAddr" : wnHWAddr,
+                      "subnet"     : subnetAddr,
+                      "sourceIP"   : wnIP,
+                      "sourcePort" : microTechPort,
+                      "destIP"     : microTechIP,
+                      "destPort"   : microTechPort
+                    }
+
+memorySettings <- { "txMem": [8, 0, 0, 0], "rxMem": [8, 0, 0, 0] };
+
+
+// RUNTIME VARIABLES / SUPPORTING FUNCTIONS
+// ------------------------------------------------
+
+local socket_0 = 0;
+local pollingInt = 5;
+
+transmitData <- [0x1A, 0x00, 0x0C, 0x00, 0x48, 0x5D, 0x24, 0x00,
+                 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x22,
+                 0x8E, 0x53, 0xAF, 0xF0, 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00];
+
+function logData(data) {
+    server.log(data);
+}
+
+function logreg(reg) {
+    server.log(format("0x%X", reg));
+}
+
+function logtable(table) {
+    foreach (k, v in table) {
+        server.log(k + ": " + v);
+    }
+}
+
+
+// RUNTIME CODE
+// ------------------------------------------------
+
+wiz <- W5100(spi, cs, resetPin);
+
+// blocks writing to registers, so only use when really need to reset
+// wiz.reset();
+
+wiz.init(networkSettings, memorySettings, null);
+wiz.setReceiveCallback(logData);
+
+wiz.setInterrupt(wiz.S0_INT_TYPE);
+wiz.clearSocketInterrupt(socket_0);
+interruptPin.configure(DIGITAL_IN_WAKEUP, function() {
+    local intTable = wiz.getSocketInterruptStatus(socket_0);
+    if (intTable.DATA_RECEIVED) wiz.receive(socket_0);
+    wiz.clearSocketInterrupt(socket_0);
+});
+
+wiz.openConnection(socket_0, networkSettings);
+server.log( wiz.connectionEstablished(socket_0) );
+
+wiz.transmit(socket_0, transmitData);
+
+
+// imp.wakeup(60, function() {
+//     wiz.closeConnection(socket);
+// })
+```
+
 ## License
 The W5100 library is licensed under the [MIT License](./LICENSE).
