@@ -275,7 +275,16 @@ wiz <- W5100(spi, cs, resetPin);
      *      socket - select the socket using an integer 0-3
 
 ### readReg(*reg*)
+     * Returns: data stored at the specified register
+     * Parameters:
+     *      reg - register to read
+
 ### writeReg(*reg, value*)
+     * Returns: null
+     * Parameters:
+     *      reg - register to write to
+     *      value - data to write to register
+
 ### reset()
      * note this is blocking for 0.01s
      * Returns: this

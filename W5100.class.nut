@@ -1,5 +1,7 @@
 class W5100 {
 
+    static VERSION = [1, 0, 0];
+
     static READ_COMMAND = 0x0F;
     static WRITE_COMMAND = 0xF0;
 
