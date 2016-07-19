@@ -1673,32 +1673,6 @@ class W5100 {
     }
 
     /***************************************************************************
-     * _logSockMemVars, logs socket memory variables
-     * Returns: null
-     * Parameters: none
-     **************************************************************************/
-    function _logSockMemVars() {
-        server.log("----------------------------------")
-        server.log( format("socket 0 rx mask 0x%04X", gS0_RX_MASK) );
-        server.log( format("socket 1 rx mask 0x%04X", gS1_RX_MASK) );
-        server.log( format("socket 2 rx mask 0x%04X", gS2_RX_MASK) );
-        server.log( format("socket 3 rx mask 0x%04X", gS3_RX_MASK) );
-        server.log( format("socket 0 rx base 0x%04X", gS0_RX_BASE) );
-        server.log( format("socket 1 rx base 0x%04X", gS1_RX_BASE) );
-        server.log( format("socket 2 rx base 0x%04X", gS2_RX_BASE) );
-        server.log( format("socket 3 rx base 0x%04X", gS3_RX_BASE) );
-        server.log( format("socket 0 tx mask 0x%04X", gS0_TX_MASK) );
-        server.log( format("socket 1 tx mask 0x%04X", gS1_TX_MASK) );
-        server.log( format("socket 2 tx mask 0x%04X", gS2_TX_MASK) );
-        server.log( format("socket 3 tx mask 0x%04X", gS3_TX_MASK) );
-        server.log( format("socket 0 tx base 0x%04X", gS0_TX_BASE) );
-        server.log( format("socket 1 tx base 0x%04X", gS1_TX_BASE) );
-        server.log( format("socket 2 tx base 0x%04X", gS2_TX_BASE) );
-        server.log( format("socket 3 tx base 0x%04X", gS3_TX_BASE) );
-        server.log("----------------------------------")
-    }
-
-    /***************************************************************************
      * _retryCheck, either checks connection state or closes connection
      *              based on number of retries
      * Returns: null
