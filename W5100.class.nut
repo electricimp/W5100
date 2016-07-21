@@ -1399,79 +1399,79 @@ class W5100 {
 
     // MISC HELPERS
 
-    /***************************************************************************
-     * _logSockMemVars, logs socket memory variables
-     * Returns: null
-     * Parameters: none
-     **************************************************************************/
-    function _logSockMemVars() {
-        server.log("----------------------------------")
-        server.log( format("socket 0 rx mask 0x%04X", gS0_RX_MASK) );
-        server.log( format("socket 1 rx mask 0x%04X", gS1_RX_MASK) );
-        server.log( format("socket 2 rx mask 0x%04X", gS2_RX_MASK) );
-        server.log( format("socket 3 rx mask 0x%04X", gS3_RX_MASK) );
-        server.log( format("socket 0 rx base 0x%04X", gS0_RX_BASE) );
-        server.log( format("socket 1 rx base 0x%04X", gS1_RX_BASE) );
-        server.log( format("socket 2 rx base 0x%04X", gS2_RX_BASE) );
-        server.log( format("socket 3 rx base 0x%04X", gS3_RX_BASE) );
-        server.log( format("socket 0 tx mask 0x%04X", gS0_TX_MASK) );
-        server.log( format("socket 1 tx mask 0x%04X", gS1_TX_MASK) );
-        server.log( format("socket 2 tx mask 0x%04X", gS2_TX_MASK) );
-        server.log( format("socket 3 tx mask 0x%04X", gS3_TX_MASK) );
-        server.log( format("socket 0 tx base 0x%04X", gS0_TX_BASE) );
-        server.log( format("socket 1 tx base 0x%04X", gS1_TX_BASE) );
-        server.log( format("socket 2 tx base 0x%04X", gS2_TX_BASE) );
-        server.log( format("socket 3 tx base 0x%04X", gS3_TX_BASE) );
-        server.log("----------------------------------")
-    }
+    // /***************************************************************************
+    //  * _logSockMemVars, logs socket memory variables
+    //  * Returns: null
+    //  * Parameters: none
+    //  **************************************************************************/
+    // function _logSockMemVars() {
+    //     server.log("----------------------------------")
+    //     server.log( format("socket 0 rx mask 0x%04X", gS0_RX_MASK) );
+    //     server.log( format("socket 1 rx mask 0x%04X", gS1_RX_MASK) );
+    //     server.log( format("socket 2 rx mask 0x%04X", gS2_RX_MASK) );
+    //     server.log( format("socket 3 rx mask 0x%04X", gS3_RX_MASK) );
+    //     server.log( format("socket 0 rx base 0x%04X", gS0_RX_BASE) );
+    //     server.log( format("socket 1 rx base 0x%04X", gS1_RX_BASE) );
+    //     server.log( format("socket 2 rx base 0x%04X", gS2_RX_BASE) );
+    //     server.log( format("socket 3 rx base 0x%04X", gS3_RX_BASE) );
+    //     server.log( format("socket 0 tx mask 0x%04X", gS0_TX_MASK) );
+    //     server.log( format("socket 1 tx mask 0x%04X", gS1_TX_MASK) );
+    //     server.log( format("socket 2 tx mask 0x%04X", gS2_TX_MASK) );
+    //     server.log( format("socket 3 tx mask 0x%04X", gS3_TX_MASK) );
+    //     server.log( format("socket 0 tx base 0x%04X", gS0_TX_BASE) );
+    //     server.log( format("socket 1 tx base 0x%04X", gS1_TX_BASE) );
+    //     server.log( format("socket 2 tx base 0x%04X", gS2_TX_BASE) );
+    //     server.log( format("socket 3 tx base 0x%04X", gS3_TX_BASE) );
+    //     server.log("----------------------------------")
+    // }
 
-    function _logGatewayIP() {
-        server.log("----------------------------------")
-        server.log( format("Gateway IP: %i.%i.%i.%i", readReg(GATEWAY_ADDR_0), readReg(GATEWAY_ADDR_1), readReg(GATEWAY_ADDR_2), readReg(GATEWAY_ADDR_3)) )
-        server.log("----------------------------------")
-    }
+    // function _logGatewayIP() {
+    //     server.log("----------------------------------")
+    //     server.log( format("Gateway IP: %i.%i.%i.%i", readReg(GATEWAY_ADDR_0), readReg(GATEWAY_ADDR_1), readReg(GATEWAY_ADDR_2), readReg(GATEWAY_ADDR_3)) )
+    //     server.log("----------------------------------")
+    // }
 
-    function _logSourceAddr() {
-        server.log("----------------------------------")
-        server.log( format("Source Mac Addr: %02X %02X %02X %02X %02X %02X", readReg(SOURCE_HW_ADDR_0), readReg(SOURCE_HW_ADDR_1), readReg(SOURCE_HW_ADDR_2), readReg(SOURCE_HW_ADDR_3), readReg(SOURCE_HW_ADDR_4), readReg(SOURCE_HW_ADDR_5)) )
-        server.log("----------------------------------")
-    }
+    // function _logSourceAddr() {
+    //     server.log("----------------------------------")
+    //     server.log( format("Source Mac Addr: %02X %02X %02X %02X %02X %02X", readReg(SOURCE_HW_ADDR_0), readReg(SOURCE_HW_ADDR_1), readReg(SOURCE_HW_ADDR_2), readReg(SOURCE_HW_ADDR_3), readReg(SOURCE_HW_ADDR_4), readReg(SOURCE_HW_ADDR_5)) )
+    //     server.log("----------------------------------")
+    // }
 
-    function _logSubnet() {
-        server.log("----------------------------------")
-        server.log( format("Subnet Addr: %i.%i.%i.%i", readReg(SUBNET_MASK_ADDR_0), readReg(SUBNET_MASK_ADDR_1), readReg(SUBNET_MASK_ADDR_2), readReg(SUBNET_MASK_ADDR_3)) )
-        server.log("----------------------------------")
-    }
+    // function _logSubnet() {
+    //     server.log("----------------------------------")
+    //     server.log( format("Subnet Addr: %i.%i.%i.%i", readReg(SUBNET_MASK_ADDR_0), readReg(SUBNET_MASK_ADDR_1), readReg(SUBNET_MASK_ADDR_2), readReg(SUBNET_MASK_ADDR_3)) )
+    //     server.log("----------------------------------")
+    // }
 
-    function _logSourceIP() {
-        server.log("----------------------------------")
-        server.log( format("Source IP: %i.%i.%i.%i", readReg(SOURCE_IP_ADDR_0), readReg(SOURCE_IP_ADDR_1), readReg(SOURCE_IP_ADDR_2), readReg(SOURCE_IP_ADDR_3)) )
-        server.log("----------------------------------")
-    }
+    // function _logSourceIP() {
+    //     server.log("----------------------------------")
+    //     server.log( format("Source IP: %i.%i.%i.%i", readReg(SOURCE_IP_ADDR_0), readReg(SOURCE_IP_ADDR_1), readReg(SOURCE_IP_ADDR_2), readReg(SOURCE_IP_ADDR_3)) )
+    //     server.log("----------------------------------")
+    // }
 
-    function _logS0SourcePort() {
-        local p1 = readReg(S0_SOURCE_PORT_0);
-        local p2 = readReg(S0_SOURCE_PORT_1);
-        local port = (p1 * 256) + p2;
-        server.log("----------------------------------")
-        server.log( format("Source Port: %i", port) )
-        server.log("----------------------------------")
-    }
+    // function _logS0SourcePort() {
+    //     local p1 = readReg(S0_SOURCE_PORT_0);
+    //     local p2 = readReg(S0_SOURCE_PORT_1);
+    //     local port = (p1 * 256) + p2;
+    //     server.log("----------------------------------")
+    //     server.log( format("Source Port: %i", port) )
+    //     server.log("----------------------------------")
+    // }
 
-    function _logS0DestPort() {
-        local p1 = readReg(S0_DEST_PORT_0);
-        local p2 = readReg(S0_DEST_PORT_1);
-        local port = (p1 * 256) + p2;
-        server.log("----------------------------------")
-        server.log( format("Source Port: %i", port) )
-        server.log("----------------------------------")
-    }
+    // function _logS0DestPort() {
+    //     local p1 = readReg(S0_DEST_PORT_0);
+    //     local p2 = readReg(S0_DEST_PORT_1);
+    //     local port = (p1 * 256) + p2;
+    //     server.log("----------------------------------")
+    //     server.log( format("Source Port: %i", port) )
+    //     server.log("----------------------------------")
+    // }
 
-    function _logS0DestIP() {
-        server.log("----------------------------------")
-        server.log( format("Destination IP: %i.%i.%i.%i", readReg(S0_DEST_IP_ADDR_0), readReg(S0_DEST_IP_ADDR_1), readReg(S0_DEST_IP_ADDR_2), readReg(S0_DEST_IP_ADDR_3)) )
-        server.log("----------------------------------")
-    }
+    // function _logS0DestIP() {
+    //     server.log("----------------------------------")
+    //     server.log( format("Destination IP: %i.%i.%i.%i", readReg(S0_DEST_IP_ADDR_0), readReg(S0_DEST_IP_ADDR_1), readReg(S0_DEST_IP_ADDR_2), readReg(S0_DEST_IP_ADDR_3)) )
+    //     server.log("----------------------------------")
+    // }
 
 }
 
@@ -1575,6 +1575,7 @@ class Wiznet {
         return this;
     }
 
+
     // CONNECTION FUNCTIONS
     // ---------------------------------------------
 
@@ -1621,6 +1622,7 @@ class Wiznet {
         return connectionClosed(socket);
     }
 
+
     // TRANSMISSION FUNCTIONS
     // ---------------------------------------------
 
@@ -1630,6 +1632,8 @@ class Wiznet {
      * Parameters:
      *      socket - select the socket using an integer 0-3
      *      transmitData - array of data to transmit
+     *      cb(optional) - callback function to be called when data
+     *                     successfully sent or timeout has occurred
      **************************************************************************/
     function transmit(socket, transmitData, cb = null) {
         _transmitting = true;
@@ -1711,13 +1715,22 @@ class Wiznet {
         return (_wiz.getSocketStatus(socket) == SOCKET_STATUS_CLOSED) ? true : false;
     }
 
+
     // INTERRUPT FUNCTIONS
     // ---------------------------------------------
 
-    function setSocketInterrupts(sockets) {
-        local interrupts = CONFLICT_INT_TYPE | sockets;
+    /***************************************************************************
+     * setSocketInterrupts
+     * Returns: null
+     * Parameters:
+     *      socketInts - select socket interrupts to enable by or-ing together
+     *                   socket interrupt constants
+     **************************************************************************/
+     function setSocketInterrupts(socketInts) {
+        local interrupts = CONFLICT_INT_TYPE | socketInts;
         _wiz.setInterrupt(interrupts)
     }
+
 
     // PRIVATE FUNCTIONS
     // ---------------------------------------------
@@ -1778,6 +1791,11 @@ class Wiznet {
         }
     }
 
+    /***************************************************************************
+     * _resetTXStatus, resets transmitting flag and transmit callback
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
     function _resetTXStatus() {
         _transmitting = false;
         _transmitCallback = null;
@@ -1787,6 +1805,12 @@ class Wiznet {
     // PRIVATE INTERRUPT FUNCTIONS
     // ---------------------------------------------
 
+    /***************************************************************************
+     * _interruptHandler, checks interrupt register and calls appropriate
+     *                    handlers, then clears the interrupt regiser
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
     function _interruptHandler() {
         local status = _wiz.getInterruptStatus();
         if (status.CONFLICT) _handleConflictInt();
@@ -1797,10 +1821,20 @@ class Wiznet {
         _wiz.clearInterrupt();
     }
 
+    /***************************************************************************
+     * _handleConflictInt, logs conflict error message
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
     function _handleConflictInt() {
         server.error("Conflict Interrupt Occured.  Please check IP Source and Destination addressess.");
     }
 
+    /***************************************************************************
+     * _handleSocketInt, handles/clears the specified socket interrupt
+     * Returns: null
+     * Parameters: socket the interrupt occurred on
+     **************************************************************************/
     function _handleSocketInt(socket) {
         local status = _wiz.getSocketInterruptStatus(socket);
         if (status.CONNECTED) server.log("Connection established on socket " + socket);
@@ -1838,6 +1872,11 @@ class Wiznet {
         _wiz.clearSocketInterrupt(socket);
     }
 
+    /***************************************************************************
+     * _clearAllInterrupts, clears all interrupt registers
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
     function _clearAllInterrupts() {
         _wiz.clearInterrupt();
         for (local i = 0; i < 4 ; i++) {
