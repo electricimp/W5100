@@ -1484,9 +1484,11 @@ class Wiznet {
     _wiz = null;
     _interruptPin = null;
     _connectionRetryCounter = null;
-    _receiveCallback = null;
+
     _transmitting = false;
     _transmitCallback = null;
+    _receiveCallback = null;
+    _disconnectCallback = null;
 
     /***************************************************************************
      * Constructor
@@ -1559,6 +1561,17 @@ class Wiznet {
      **************************************************************************/
     function setReceiveCallback(cb) {
         _receiveCallback = cb;
+        return this;
+    }
+
+    /***************************************************************************
+     * setDisconnectCallback
+     * Returns: this
+     * Parameters:
+     *      cb - function to be called when disconnect interrupt happens
+     **************************************************************************/
+    function setDisconnectCallback(cb) {
+        _disconnectCallback = cb;
         return this;
     }
 
@@ -1648,9 +1661,13 @@ class Wiznet {
         if ( connectionEstablished(socket) ) {
             if ( dataWaiting(socket) ) {
                 if(cb) {
-                    cb( _wiz.readRxData(socket) );
+                    imp.wakeup(0, function() {
+                        cb( _wiz.readRxData(socket) );
+                    }.bindenv(this));
                 } else if (_receiveCallback) {
-                    _receiveCallback( _wiz.readRxData(socket) );
+                    imp.wakeup(0, function() {
+                        _receiveCallback( _wiz.readRxData(socket) );
+                    }.bindenv(this));
                 }
             }
         } else {
@@ -1790,6 +1807,7 @@ class Wiznet {
         if (status.DISCONNECTED) {
             server.log("Connection disconnected on socket " + socket);
             closeConnection(socket);
+            if(_disconnectCallback) imp.wakeup(0, _disconnectCallback.bindenv(this));
         }
         if (status.SEND_COMPLETE) {
             server.log("Send complete on socket " + socket);
