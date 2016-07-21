@@ -1485,6 +1485,8 @@ class Wiznet {
     _interruptPin = null;
     _connectionRetryCounter = null;
     _receiveCallback = null;
+    _transmitting = false;
+    _transmitCallback = null;
 
     /***************************************************************************
      * Constructor
@@ -1601,6 +1603,7 @@ class Wiznet {
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
     function closeConnection(socket) {
+        _resetTXStatus();
         _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
         return connectionClosed(socket);
     }
@@ -1615,7 +1618,10 @@ class Wiznet {
      *      socket - select the socket using an integer 0-3
      *      transmitData - array of data to transmit
      **************************************************************************/
-    function transmit(socket, transmitData) {
+    function transmit(socket, transmitData, cb = null) {
+        _transmitting = true;
+        _transmitCallback = cb;
+
         if (connectionEstablished(socket)) {
             if (dataWaiting(socket) && _receiveCallback) {
                 _receiveCallback( _wiz.readRxData(socket) );
@@ -1750,9 +1756,14 @@ class Wiznet {
         if (_connectionRetryCounter > 0) {
             _checkstate(socket, cb);
         } else {
-            _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
+            closeConnection(socket);
             _connectionRetryCounter = CONNECTION_RETRY;
         }
+    }
+
+    function _resetTXStatus() {
+        _transmitting = false;
+        _transmitCallback = null;
     }
 
 
@@ -1775,17 +1786,37 @@ class Wiznet {
 
     function _handleSocketInt(socket) {
         local status = _wiz.getSocketInterruptStatus(socket);
-        if (status.SEND_COMPLETE) server.log("Socket " + socket + " Interrupt: SEND COMPLETE");
-        if (status.TIMEOUT) server.log("Socket " + socket + " Interrupt: TIMEOUT");
-        if (status.DATA_RECEIVED) {
-            server.log("Socket " + socket + " Interrupt: DATA RECEIVED");
-            receive(socket);
-        }
+        if (status.CONNECTED) server.log("Connection established on socket " + socket);
         if (status.DISCONNECTED) {
-            server.log("Socket " + socket + " Interrupt: DISCONNECTED");
+            server.log("Connection disconnected on socket " + socket);
             closeConnection(socket);
         }
-        if (status.CONNECTED) server.log("Socket " + socket + " Interrupt: CONNECTED");
+        if (status.SEND_COMPLETE) {
+            server.log("Send complete on socket " + socket);
+            if (_transmitting && _transmitCallback) {
+                local cb = _transmitCallback;
+                _resetTXStatus();
+
+                imp.wakeup(0, function() {
+                    cb(null, "OK");
+                }.bindenv(this))
+            }
+        }
+        if (status.TIMEOUT) {
+            server.log("Timeout occurred on socket " + socket);
+            if (_transmitting && _transmitCallback) {
+                local cb = _transmitCallback;
+                _resetTXStatus();
+
+                imp.wakeup(0, function() {
+                    cb("Error: timeout", null);
+                }.bindenv(this))
+            }
+        }
+        if (status.DATA_RECEIVED) {
+            server.log("Data received on socket " + socket);
+            receive(socket);
+        }
         _wiz.clearSocketInterrupt(socket);
     }
 
