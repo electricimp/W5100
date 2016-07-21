@@ -1,291 +1,290 @@
+// SPI COMMANDS
+const READ_COMMAND = 0x0F;
+const WRITE_COMMAND = 0xF0;
+
+// COMMON REGISTERS
+// MR
+const MODE = 0x0000;
+
+//GWR
+const GATEWAY_ADDR_0 = 0x0001;
+const GATEWAY_ADDR_1 = 0x0002;
+const GATEWAY_ADDR_2 = 0x0003;
+const GATEWAY_ADDR_3 = 0x0004;
+
+//SUBR
+const SUBNET_MASK_ADDR_0 = 0x0005;
+const SUBNET_MASK_ADDR_1 = 0x0006;
+const SUBNET_MASK_ADDR_2 = 0x0007;
+const SUBNET_MASK_ADDR_3 = 0x0008;
+
+//SHAR
+const SOURCE_HW_ADDR_0 = 0x0009;
+const SOURCE_HW_ADDR_1 = 0x000A;
+const SOURCE_HW_ADDR_2 = 0x000B;
+const SOURCE_HW_ADDR_3 = 0x000C;
+const SOURCE_HW_ADDR_4 = 0x000D;
+const SOURCE_HW_ADDR_5 = 0x000E;
+
+//SIPR
+const SOURCE_IP_ADDR_0 = 0x000F;
+const SOURCE_IP_ADDR_1 = 0x0010;
+const SOURCE_IP_ADDR_2 = 0x0011;
+const SOURCE_IP_ADDR_3 = 0x0012;
+
+//IR
+const INTERRUPT = 0x0015;
+// IMR
+const INTERRUPT_MASK = 0x0016;
+
+// RTR
+const RETRY_TIME_0 = 0x0017;
+const RETRY_TIME_1 = 0x0018;
+// RCR
+const RETRY_COUNT = 0x0019;
+
+// RMSR
+const RX_MEM_SIZE = 0x001A;
+// TMSR
+const TX_MEM_SIZE = 0x001B;
+
+// SOCKET 0 REGISTERS
+const S0_MODE = 0x0400;
+const S0_COMMAND = 0x0401;
+const S0_INTERRUPT = 0x402;
+const S0_STATUS = 0x0403;
+
+const S0_SOURCE_PORT_0 = 0x0404;
+const S0_SOURCE_PORT_1 = 0x0405;
+
+const S0_DEST_HW_ADDR_0 = 0x0406;
+const S0_DEST_HW_ADDR_1 = 0x0407;
+const S0_DEST_HW_ADDR_2 = 0x0408;
+const S0_DEST_HW_ADDR_3 = 0x0409;
+const S0_DEST_HW_ADDR_4 = 0x040A;
+const S0_DEST_HW_ADDR_5 = 0x040B;
+
+const S0_DEST_IP_ADDR_0 = 0x040C;
+const S0_DEST_IP_ADDR_1 = 0x040D;
+const S0_DEST_IP_ADDR_2 = 0x040E;
+const S0_DEST_IP_ADDR_3 = 0x040F;
+
+const S0_DEST_PORT_0 = 0x0410;
+const S0_DEST_PORT_1 = 0x0411;
+
+// SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
+const S0_TX_SIZE_R1 = 0x0420;
+const S0_TX_SIZE_R2 = 0x0421;
+
+// SOCKET TX WRITE POINTER
+const S0_TX_WP_R1 = 0x0424;
+const S0_TX_WP_R2 = 0x0425;
+
+// SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
+const S0_RX_SIZE_R1 = 0x0426;
+const S0_RX_SIZE_R2 = 0x0427;
+
+// SOCKET RX READ POINTER
+const S0_RX_RP_R1 = 0x0428;
+const S0_RX_RP_R2 = 0x0429;
+
+// SOCKET 1 REGISTERS
+const S1_MODE = 0x0500;
+const S1_COMMAND = 0x0501;
+const S1_INTERRUPT = 0x0502;
+const S1_STATUS = 0x0503;
+
+const S1_SOURCE_PORT_0 = 0x0504;
+const S1_SOURCE_PORT_1 = 0x0505;
+
+const S1_DEST_HW_ADDR_0 = 0x0506;
+const S1_DEST_HW_ADDR_1 = 0x0507;
+const S1_DEST_HW_ADDR_2 = 0x0508;
+const S1_DEST_HW_ADDR_3 = 0x0509;
+const S1_DEST_HW_ADDR_4 = 0x050A;
+const S1_DEST_HW_ADDR_5 = 0x050B;
+
+const S1_DEST_IP_ADDR_0 = 0x050C;
+const S1_DEST_IP_ADDR_1 = 0x050D;
+const S1_DEST_IP_ADDR_2 = 0x050E;
+const S1_DEST_IP_ADDR_3 = 0x050F;
+
+const S1_DEST_PORT_0 = 0x0510;
+const S1_DEST_PORT_1 = 0x0511;
+
+// SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
+const S1_TX_SIZE_R1 = 0x0520;
+const S1_TX_SIZE_R2 = 0x0521;
+
+// SOCKET TX WRITE POINTER
+const S1_TX_WP_R1 = 0x0524;
+const S1_TX_WP_R2 = 0x0525;
+
+// SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
+const S1_RX_SIZE_R1 = 0x0526;
+const S1_RX_SIZE_R2 = 0x0527;
+
+// SOCKET RX READ POINTER
+const S1_RX_RP_R1 = 0x0528;
+const S1_RX_RP_R2 = 0x0529;
+
+// SOCKET 2 REGISTERS
+const S2_MODE = 0x0600;
+const S2_COMMAND = 0x0601;
+const S2_INTERRUPT = 0x0602;
+const S2_STATUS = 0x0603;
+
+const S2_SOURCE_PORT_0 = 0x0604;
+const S2_SOURCE_PORT_1 = 0x0605;
+
+const S2_DEST_HW_ADDR_0 = 0x0606;
+const S2_DEST_HW_ADDR_1 = 0x0607;
+const S2_DEST_HW_ADDR_2 = 0x0608;
+const S2_DEST_HW_ADDR_3 = 0x0609;
+const S2_DEST_HW_ADDR_4 = 0x060A;
+const S2_DEST_HW_ADDR_5 = 0x060B;
+
+const S2_DEST_IP_ADDR_0 = 0x060C;
+const S2_DEST_IP_ADDR_1 = 0x060D;
+const S2_DEST_IP_ADDR_2 = 0x060E;
+const S2_DEST_IP_ADDR_3 = 0x060F;
+
+const S2_DEST_PORT_0 = 0x0610;
+const S2_DEST_PORT_1 = 0x0611;
+
+// SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
+const S2_TX_SIZE_R1 = 0x0620;
+const S2_TX_SIZE_R2 = 0x0621;
+
+// SOCKET TX WRITE POINTER
+const S2_TX_WP_R1 = 0x0624;
+const S2_TX_WP_R2 = 0x0625;
+
+// SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
+const S2_RX_SIZE_R1 = 0x0626;
+const S2_RX_SIZE_R2 = 0x0627;
+
+// SOCKET RX READ POINTER
+const S2_RX_RP_R1 = 0x0628;
+const S2_RX_RP_R2 = 0x0629;
+
+// SOCKET 3 REGISTERS
+const S3_MODE = 0x0700;
+const S3_COMMAND = 0x0701;
+const S3_INTERRUPT = 0x0702;
+const S3_STATUS = 0x0703;
+
+const S3_SOURCE_PORT_0 = 0x0704;
+const S3_SOURCE_PORT_1 = 0x0705;
+
+const S3_DEST_HW_ADDR_0 = 0x0706;
+const S3_DEST_HW_ADDR_1 = 0x0707;
+const S3_DEST_HW_ADDR_2 = 0x0708;
+const S3_DEST_HW_ADDR_3 = 0x0709;
+const S3_DEST_HW_ADDR_4 = 0x070A;
+const S3_DEST_HW_ADDR_5 = 0x070B;
+
+const S3_DEST_IP_ADDR_0 = 0x070C;
+const S3_DEST_IP_ADDR_1 = 0x070D;
+const S3_DEST_IP_ADDR_2 = 0x070E;
+const S3_DEST_IP_ADDR_3 = 0x070F;
+
+const S3_DEST_PORT_0 = 0x0710;
+const S3_DEST_PORT_1 = 0x0711;
+
+// SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
+const S3_TX_SIZE_R1 = 0x0720;
+const S3_TX_SIZE_R2 = 0x0721;
+
+// SOCKET TX WRITE POINTER
+const S3_TX_WP_R1 = 0x0724;
+const S3_TX_WP_R2 = 0x0725;
+
+// SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
+const S3_RX_SIZE_R1 = 0x0726;
+const S3_RX_SIZE_R2 = 0x0727;
+
+// SOCKET RX READ POINTER
+const S3_RX_RP_R1 = 0x0728;
+const S3_RX_RP_R2 = 0x0729;
+
+// MODES
+const SW_RESET = 0x80;
+const PING_BLOCK = 0x10;
+const PPPoE = 0x08;
+const ADDR_AUTO_INCR = 0x02;
+const INDIR_BUS = 0x01;
+const DEFAULT_MODE = 0x00;
+
+// SOCKET MODES (Sn_MR)
+const SOCKET_MODE_MULTI = 0x80;
+const SOCKET_MODE_MAC_FILTER = 0x40;
+const SOCKET_MODE_DELAY_ACK_MCv1 = 0x20;
+const SOCKET_MODE_CLOSED = 0x00;
+const SOCKET_MODE_TCP = 0x01;
+const SOCKET_MODE_UDP = 0x02;
+const SOCKET_MODE_IPRAW = 0x03;
+const SOCKET_MODE_MACRAW = 0x04;
+const SOCKET_MODE_PPPoE = 0x05;
+
+// SOCKET COMMANDS (Sn_CR)
+const SOCKET_OPEN = 0x01;
+const SOCKET_LISTEN = 0x02;
+const SOCKET_CONNECT = 0x04;
+const SOCKET_DICONNECT = 0x08;
+const SOCKET_CLOSE = 0x10;
+const SOCKET_SEND = 0x20;
+const SOCKET_SEND_MAC = 0x21;
+const SOCKET_SEND_KEEP = 0x22;
+const SOCKET_RECEIVE = 0x40;
+
+// SOCKET STATUS (Sn_SR)
+const SOCKET_STATUS_CLOSED = 0x00;
+const SOCKET_STATUS_INIT = 0x13;
+const SOCKET_STATUS_LISTEN = 0x14;
+const SOCKET_STATUS_ESTABLISHED = 0x17;
+const SOCKET_STATUS_CLOSE_WAIT = 0x1C;
+const SOCKET_STATUS_UDP = 0x22;
+const SOCKET_STATUS_IPRAW = 0x32;
+const SOCKET_STATUS_MACRAW = 0x42;
+const SOCKET_STATUS_PPPOE = 0x5F;
+const SOCKET_STATUS_SYNSENT = 0x15;
+const SOCKET_STATUS_SYNRECV = 0x16;
+const SOCKET_STATUS_FIN_WAIT = 0x18;
+const SOCKET_STATUS_CLOSING = 0x1A;
+const SOCKET_STATUS_TIME_WAIT = 0x1B;
+const SOCKET_STATUS_LAST_ACK = 0x1D;
+const SOCKET_STATUS_ARP = 0x01;
+
+// INTERRUPT TYPES
+const CONFLICT_INT_TYPE = 0x80;
+const UNREACH_INT_TYPE = 0x40;
+const PPPoE_INT_TYPE = 0x20;
+const S3_INT_TYPE = 0x08;
+const S2_INT_TYPE = 0x04;
+const S1_INT_TYPE = 0x02;
+const S0_INT_TYPE = 0x01;
+const NONE_INT_TYPE = 0x00;
+
+// SOCKET INTERRUPT TYPES
+const SEND_COMPLETE_INT_TYPE = 0x10;
+const TIMEOUT_INT_TYPE = 0x08;
+const DATA_RECEIVED_INT_TYPE = 0x04;
+const DISCONNECTED_INT_TYPE = 0x02;
+const CONNECTED_INT_TYPE = 0x01;
+
+// MEMORY CONSTANTS
+const CHIP_BASE_ADDR = 0x00;
+const RX_BASE = 0x6000;
+const TX_BASE = 0x4000;
+const CHIP_MAX_ADDR = 0x8000;
+
+const MASK_1k = 0x03FF;
+const MASK_2k = 0x07FF;
+const MASK_4k = 0x0FFF;
+const MASK_8k = 0x1FFF;
+
 class W5100 {
-
-    static VERSION = [1, 0, 0];
-
-    static READ_COMMAND = 0x0F;
-    static WRITE_COMMAND = 0xF0;
-
-    // COMMON REGISTERS
-    // MR
-    static MODE = 0x0000;
-
-    //GWR
-    static GATEWAY_ADDR_0 = 0x0001;
-    static GATEWAY_ADDR_1 = 0x0002;
-    static GATEWAY_ADDR_2 = 0x0003;
-    static GATEWAY_ADDR_3 = 0x0004;
-
-    //SUBR
-    static SUBNET_MASK_ADDR_0 = 0x0005;
-    static SUBNET_MASK_ADDR_1 = 0x0006;
-    static SUBNET_MASK_ADDR_2 = 0x0007;
-    static SUBNET_MASK_ADDR_3 = 0x0008;
-
-    //SHAR
-    static SOURCE_HW_ADDR_0 = 0x0009;
-    static SOURCE_HW_ADDR_1 = 0x000A;
-    static SOURCE_HW_ADDR_2 = 0x000B;
-    static SOURCE_HW_ADDR_3 = 0x000C;
-    static SOURCE_HW_ADDR_4 = 0x000D;
-    static SOURCE_HW_ADDR_5 = 0x000E;
-
-    //SIPR
-    static SOURCE_IP_ADDR_0 = 0x000F;
-    static SOURCE_IP_ADDR_1 = 0x0010;
-    static SOURCE_IP_ADDR_2 = 0x0011;
-    static SOURCE_IP_ADDR_3 = 0x0012;
-
-    //IR
-    static INTERRUPT = 0x0015;
-    // IMR
-    static INTERRUPT_MASK = 0x0016;
-
-    // RTR
-    static RETRY_TIME_0 = 0x0017;
-    static RETRY_TIME_1 = 0x0018;
-    // RCR
-    static RETRY_COUNT = 0x0019;
-
-    // RMSR
-    static RX_MEM_SIZE = 0x001A;
-    // TMSR
-    static TX_MEM_SIZE = 0x001B;
-
-    // SOCKET 0 REGISTERS
-    static S0_MODE = 0x0400;
-    static S0_COMMAND = 0x0401;
-    static S0_INTERRUPT = 0x402;
-    static S0_STATUS = 0x0403;
-
-    static S0_SOURCE_PORT_0 = 0x0404;
-    static S0_SOURCE_PORT_1 = 0x0405;
-
-    static S0_DEST_HW_ADDR_0 = 0x0406;
-    static S0_DEST_HW_ADDR_1 = 0x0407;
-    static S0_DEST_HW_ADDR_2 = 0x0408;
-    static S0_DEST_HW_ADDR_3 = 0x0409;
-    static S0_DEST_HW_ADDR_4 = 0x040A;
-    static S0_DEST_HW_ADDR_5 = 0x040B;
-
-    static S0_DEST_IP_ADDR_0 = 0x040C;
-    static S0_DEST_IP_ADDR_1 = 0x040D;
-    static S0_DEST_IP_ADDR_2 = 0x040E;
-    static S0_DEST_IP_ADDR_3 = 0x040F;
-
-    static S0_DEST_PORT_0 = 0x0410;
-    static S0_DEST_PORT_1 = 0x0411;
-
-    // SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
-    static S0_TX_SIZE_R1 = 0x0420;
-    static S0_TX_SIZE_R2 = 0x0421;
-
-    // SOCKET TX WRITE POINTER
-    static S0_TX_WP_R1 = 0x0424;
-    static S0_TX_WP_R2 = 0x0425;
-
-    // SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
-    static S0_RX_SIZE_R1 = 0x0426;
-    static S0_RX_SIZE_R2 = 0x0427;
-
-    // SOCKET RX READ POINTER
-    static S0_RX_RP_R1 = 0x0428;
-    static S0_RX_RP_R2 = 0x0429;
-
-    // SOCKET 1 REGISTERS
-    static S1_MODE = 0x0500;
-    static S1_COMMAND = 0x0501;
-    static S1_INTERRUPT = 0x0502;
-    static S1_STATUS = 0x0503;
-
-    static S1_SOURCE_PORT_0 = 0x0504;
-    static S1_SOURCE_PORT_1 = 0x0505;
-
-    static S1_DEST_HW_ADDR_0 = 0x0506;
-    static S1_DEST_HW_ADDR_1 = 0x0507;
-    static S1_DEST_HW_ADDR_2 = 0x0508;
-    static S1_DEST_HW_ADDR_3 = 0x0509;
-    static S1_DEST_HW_ADDR_4 = 0x050A;
-    static S1_DEST_HW_ADDR_5 = 0x050B;
-
-    static S1_DEST_IP_ADDR_0 = 0x050C;
-    static S1_DEST_IP_ADDR_1 = 0x050D;
-    static S1_DEST_IP_ADDR_2 = 0x050E;
-    static S1_DEST_IP_ADDR_3 = 0x050F;
-
-    static S1_DEST_PORT_0 = 0x0510;
-    static S1_DEST_PORT_1 = 0x0511;
-
-    // SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
-    static S1_TX_SIZE_R1 = 0x0520;
-    static S1_TX_SIZE_R2 = 0x0521;
-
-    // SOCKET TX WRITE POINTER
-    static S1_TX_WP_R1 = 0x0524;
-    static S1_TX_WP_R2 = 0x0525;
-
-    // SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
-    static S1_RX_SIZE_R1 = 0x0526;
-    static S1_RX_SIZE_R2 = 0x0527;
-
-    // SOCKET RX READ POINTER
-    static S1_RX_RP_R1 = 0x0528;
-    static S1_RX_RP_R2 = 0x0529;
-
-    // SOCKET 2 REGISTERS
-    static S2_MODE = 0x0600;
-    static S2_COMMAND = 0x0601;
-    static S2_INTERRUPT = 0x0602;
-    static S2_STATUS = 0x0603;
-
-    static S2_SOURCE_PORT_0 = 0x0604;
-    static S2_SOURCE_PORT_1 = 0x0605;
-
-    static S2_DEST_HW_ADDR_0 = 0x0606;
-    static S2_DEST_HW_ADDR_1 = 0x0607;
-    static S2_DEST_HW_ADDR_2 = 0x0608;
-    static S2_DEST_HW_ADDR_3 = 0x0609;
-    static S2_DEST_HW_ADDR_4 = 0x060A;
-    static S2_DEST_HW_ADDR_5 = 0x060B;
-
-    static S2_DEST_IP_ADDR_0 = 0x060C;
-    static S2_DEST_IP_ADDR_1 = 0x060D;
-    static S2_DEST_IP_ADDR_2 = 0x060E;
-    static S2_DEST_IP_ADDR_3 = 0x060F;
-
-    static S2_DEST_PORT_0 = 0x0610;
-    static S2_DEST_PORT_1 = 0x0611;
-
-    // SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
-    static S2_TX_SIZE_R1 = 0x0620;
-    static S2_TX_SIZE_R2 = 0x0621;
-
-    // SOCKET TX WRITE POINTER
-    static S2_TX_WP_R1 = 0x0624;
-    static S2_TX_WP_R2 = 0x0625;
-
-    // SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
-    static S2_RX_SIZE_R1 = 0x0626;
-    static S2_RX_SIZE_R2 = 0x0627;
-
-    // SOCKET RX READ POINTER
-    static S2_RX_RP_R1 = 0x0628;
-    static S2_RX_RP_R2 = 0x0629;
-
-    // SOCKET 3 REGISTERS
-    static S3_MODE = 0x0700;
-    static S3_COMMAND = 0x0701;
-    static S3_INTERRUPT = 0x0702;
-    static S3_STATUS = 0x0703;
-
-    static S3_SOURCE_PORT_0 = 0x0704;
-    static S3_SOURCE_PORT_1 = 0x0705;
-
-    static S3_DEST_HW_ADDR_0 = 0x0706;
-    static S3_DEST_HW_ADDR_1 = 0x0707;
-    static S3_DEST_HW_ADDR_2 = 0x0708;
-    static S3_DEST_HW_ADDR_3 = 0x0709;
-    static S3_DEST_HW_ADDR_4 = 0x070A;
-    static S3_DEST_HW_ADDR_5 = 0x070B;
-
-    static S3_DEST_IP_ADDR_0 = 0x070C;
-    static S3_DEST_IP_ADDR_1 = 0x070D;
-    static S3_DEST_IP_ADDR_2 = 0x070E;
-    static S3_DEST_IP_ADDR_3 = 0x070F;
-
-    static S3_DEST_PORT_0 = 0x0710;
-    static S3_DEST_PORT_1 = 0x0711;
-
-    // SOCKET TX FREE SIZE REGISTER (Sn_TX_FREE_SIZE)
-    static S3_TX_SIZE_R1 = 0x0720;
-    static S3_TX_SIZE_R2 = 0x0721;
-
-    // SOCKET TX WRITE POINTER
-    static S3_TX_WP_R1 = 0x0724;
-    static S3_TX_WP_R2 = 0x0725;
-
-    // SOCKET RX RECEIVED SIZE REGISTER (Sn_RX_RSR)
-    static S3_RX_SIZE_R1 = 0x0726;
-    static S3_RX_SIZE_R2 = 0x0727;
-
-    // SOCKET RX READ POINTER
-    static S3_RX_RP_R1 = 0x0728;
-    static S3_RX_RP_R2 = 0x0729;
-
-    // MODES
-    static SW_RESET = 0x80;
-    static PING_BLOCK = 0x10;
-    static PPPoE = 0x08;
-    static ADDR_AUTO_INCR = 0x02;
-    static INDIR_BUS = 0x01;
-    static DEFAULT_MODE = 0x00;
-
-    // SOCKET MODES (Sn_MR)
-    static SOCKET_MODE_MULTI = 0x80;
-    static SOCKET_MODE_MAC_FILTER = 0x40;
-    static SOCKET_MODE_DELAY_ACK_MCv1 = 0x20;
-    static SOCKET_MODE_CLOSED = 0x00;
-    static SOCKET_MODE_TCP = 0x01;
-    static SOCKET_MODE_UDP = 0x02;
-    static SOCKET_MODE_IPRAW = 0x03;
-    static SOCKET_MODE_MACRAW = 0x04;
-    static SOCKET_MODE_PPPoE = 0x05;
-
-    // SOCKET COMMANDS (Sn_CR)
-    static SOCKET_OPEN = 0x01;
-    static SOCKET_LISTEN = 0x02;
-    static SOCKET_CONNECT = 0x04;
-    static SOCKET_DICONNECT = 0x08;
-    static SOCKET_CLOSE = 0x10;
-    static SOCKET_SEND = 0x20;
-    static SOCKET_SEND_MAC = 0x21;
-    static SOCKET_SEND_KEEP = 0x22;
-    static SOCKET_RECEIVE = 0x40;
-
-    // SOCKET STATUS (Sn_SR)
-    static SOCKET_STATUS_CLOSED = 0x00;
-    static SOCKET_STATUS_INIT = 0x13;
-    static SOCKET_STATUS_LISTEN = 0x14;
-    static SOCKET_STATUS_ESTABLISHED = 0x17;
-    static SOCKET_STATUS_CLOSE_WAIT = 0x1C;
-    static SOCKET_STATUS_UDP = 0x22;
-    static SOCKET_STATUS_IPRAW = 0x32;
-    static SOCKET_STATUS_MACRAW = 0x42;
-    static SOCKET_STATUS_PPPOE = 0x5F;
-    static SOCKET_STATUS_SYNSENT = 0x15;
-    static SOCKET_STATUS_SYNRECV = 0x16;
-    static SOCKET_STATUS_FIN_WAIT = 0x18;
-    static SOCKET_STATUS_CLOSING = 0x1A;
-    static SOCKET_STATUS_TIME_WAIT = 0x1B;
-    static SOCKET_STATUS_LAST_ACK = 0x1D;
-    static SOCKET_STATUS_ARP = 0x01;
-
-    // INTERRUPT TYPES
-    static CONFLICT_INT_TYPE = 0x80;
-    static UNREACH_INT_TYPE = 0x40;
-    static PPPoE_INT_TYPE = 0x20;
-    static S3_INT_TYPE = 0x08;
-    static S2_INT_TYPE = 0x04;
-    static S1_INT_TYPE = 0x02;
-    static S0_INT_TYPE = 0x01;
-    static NONE_INT_TYPE = 0x00;
-
-    // SOCKET INTERRUPT TYPES
-    static SEND_COMPLETE_INT_TYPE = 0x10;
-    static TIMEOUT_INT_TYPE = 0x08;
-    static DATA_RECEIVED_INT_TYPE = 0x04;
-    static DISCONNECTED_INT_TYPE = 0x02;
-    static CONNECTED_INT_TYPE = 0x01;
-
-    // MEMORY CONSTANTS
-    static CHIP_BASE_ADDR = 0x00;
-    static RX_BASE = 0x6000;
-    static TX_BASE = 0x4000;
-    static CHIP_MAX_ADDR = 0x8000;
-
-    static MASK_1k = 0x03FF;
-    static MASK_2k = 0x07FF;
-    static MASK_4k = 0x0FFF;
-    static MASK_8k = 0x1FFF;
 
     // MEMORY VARIABLES
     gS0_RX_MASK = null;
@@ -308,8 +307,7 @@ class W5100 {
     gS2_TX_BASE = null;
     gS3_TX_BASE = null;
 
-    _rxSocketMemory = null;
-    _txSocketMemory = null;
+    socketMemory = null;
 
     // CLASS VARIABLES
     _spi = null;
@@ -373,64 +371,19 @@ class W5100 {
     }
 
     /***************************************************************************
-     * setRXMem
-     * Returns: this
-     * Parameters:
-     *      memory - an array of four integers with the desired receive memory
-     *               allotment for each socket (supported values are 1, 2, 4, 8)
-     **************************************************************************/
-    function setRXMem(memory) {
-        local rx_mem = 0x00;
-        local mask = 0x00;
-        local total = 0;
-
-        foreach (socket, mem_size in memory) {
-            local socket_mem = 0x00;
-            local bytes = 0;
-
-            // adjust memory size if total memory is used up
-            if ( total + mem_size > 8) {
-                mem_size = 8 - total;
-                if (mem_size < 0) mem_size = 0;
-            }
-
-            if(mem_size >= 8) {
-                mem_size = 8;
-                mask = MASK_8k;
-            } else if (mem_size >= 4) {
-                mem_size = 4;
-                mask = MASK_4k;
-            } else if (mem_size >= 2) {
-                mem_size = 2;
-                mask = MASK_2k;
-            } else {
-                mem_size = 1;
-                mask = MASK_1k;
-            }
-
-            total += mem_size;
-
-            _setMask(socket, mask, "rx");
-            _rxSocketMemory[socket] = bytes;
-
-            socket_mem = _setMemory(socket, mem_size);
-            rx_mem = rx_mem | socket_mem;
-        }
-
-        _setSocketRxMemBase();
-        writeReg(RX_MEM_SIZE, rx_mem);
-        return this;
-    }
-
-    /***************************************************************************
-     * setTXMem
+     * setMemory
      * Returns: this
      * Parameters:
      *      memory - an array of four integers with the desired transmit memory
      *               allotment for each socket (supported values are 1, 2, 4, 8)
+     *      dir - a string containing the transmition direction, accepted values
+     *            are "tx" or "rx"
      **************************************************************************/
-    function setTXMem(memory) {
-        local tx_mem = 0x00;
+    function setMemory(memory, dir) {
+        local reg = TX_MEM_SIZE;
+        if (dir == "rx") reg = RX_MEM_SIZE;
+
+        local bits = 0x00;
         local mask = 0x00;
         local total = 0;
 
@@ -446,29 +399,37 @@ class W5100 {
 
             if(mem_size >= 8) {
                 mem_size = 8;
+                bytes = 8192;
                 mask = MASK_8k;
             } else if (mem_size >= 4) {
                 mem_size = 4;
+                bytes = 4096;
                 mask = MASK_4k;
             } else if (mem_size >= 2) {
                 mem_size = 2;
+                bytes = 2048;
                 mask = MASK_2k;
-            } else {
+            } else if (mem_size >= 1) {
                 mem_size = 1;
+                bytes = 1024;
                 mask = MASK_1k;
+            } else {
+                mem_size = 0;
+                bytes = 0;
+                mask = 0x00;
             }
 
             total += mem_size;
 
-            _setMask(socket, mask, "tx");
-            _txSocketMemory[socket] = bytes;
+            _setMask(socket, mask, dir);
+            socketMemory[dir][socket] = bytes;
 
-            socket_mem = _setMemory(socket, mem_size);
-            tx_mem = tx_mem | socket_mem;
+            socket_mem = _setSocketMemory(socket, mem_size);
+            bits = bits | socket_mem;
         }
 
-        _setSocketTXMemBase();
-        writeReg(TX_MEM_SIZE, tx_mem);
+        _setSocketMemBase(dir);
+        writeReg(reg, bits);
         return this;
     }
 
@@ -1057,17 +1018,14 @@ class W5100 {
         // get the received data size
         local dataSize = getRxDataSize(socket);
         local mem_base = getSocketRXMemBase(socket);
-        local mem_max = getSocketTXMemMax(socket);
+        local mem_max = getSocketRXMemMax(socket);
 
         // calculate offset address
         local rx_pointer = getRxReadPointer(socket);
         local rx_offset = rx_pointer & gS0_RX_MASK;
-        server.log("pointer: " + rx_pointer);
-        server.log("offset: " + rx_offset);
 
         // calculate start address(physical address)
         local rx_start_addr = rx_offset + gS0_RX_BASE;
-        server.log("start: " + rx_start_addr);
 
         // read transmitted data here
         local data = _readData(rx_start_addr, dataSize, mem_base, mem_max);
@@ -1094,20 +1052,20 @@ class W5100 {
         local tx_base = getSocketTXMemBase(socket);
         local tx_max = getSocketTXMemMax(socket);
 
-        // get the free TX memory size
-        // get_free_size = Sn_TX_FSR;
-        local tx_free_size = getFreeTxDataSize(socket);
-        server.log(format("size: 0x%04X", tx_free_size));
+        // server.log(socketMemory.tx[0])
+
+        // check transmission data size
+        if (tx_length > socketMemory.tx[socket]) {
+            server.error("Transmit data larger than socket transmit buffer.");
+            return getSocketStatus(socket);
+        }
 
         // calculate offset address
         local tx_pointer = getTxWritePointer(socket);
         local tx_offset = tx_pointer & gS0_TX_MASK;
-        server.log(format("pointer1: 0x%04X", tx_pointer));
-        server.log(format("offset: 0x%04X", tx_offset));
 
         // calculate start address(physical address)
         local tx_start_addr = gS0_TX_BASE + tx_offset;
-        server.log(format("start: 0x%04X", tx_start_addr));
 
         // write transmit data
         _writeData(tx_start_addr, transmitData, tx_base, tx_max);
@@ -1293,7 +1251,7 @@ class W5100 {
         gS3_RX_MASK = MASK_2k;
 
         gS0_RX_BASE = CHIP_BASE_ADDR + RX_BASE;
-        _setSocketRxMemBase();
+        _setSocketMemBase("rx")
 
         // defualt memory settings
         gS0_TX_MASK = MASK_2k;
@@ -1302,20 +1260,21 @@ class W5100 {
         gS3_TX_MASK = MASK_2k;
 
         gS0_TX_BASE = CHIP_BASE_ADDR + TX_BASE;
-        _setSocketTXMemBase();
+        _setSocketMemBase("tx");
 
-        _rxSocketMemory = [2048, 2048, 2048, 2048];
-        _txSocketMemory = [2048, 2048, 2048, 2048];
+        socketMemory = { "rx" : [2048, 2048, 2048, 2048],
+                         "tx" : [2048, 2048, 2048, 2048]
+                       }
     }
 
     /***************************************************************************
-     * _setMemory
+     * _setSocketMemory
      * Returns: memory register value
      * Parameters:
      *      socket - select the socket using an integer 0-3
      *      memory - human readable memory value
      **************************************************************************/
-    function _setMemory(socket, memory) {
+    function _setSocketMemory(socket, memory) {
         local value = 0x00;
         switch (socket) {
             case 0:
@@ -1372,25 +1331,20 @@ class W5100 {
     }
 
     /***************************************************************************
-     * _setSocketTXMemBase, calculates/stores transmit socket base addresses
-     * Returns: null
-     * Parameters: none
-     **************************************************************************/
-    function _setSocketTXMemBase() {
-        gS1_TX_BASE = gS0_TX_BASE + (gS0_TX_MASK + 1);
-        gS2_TX_BASE = gS1_TX_BASE + (gS1_TX_MASK + 1);
-        gS3_TX_BASE = gS2_TX_BASE + (gS2_TX_MASK + 1);
-    }
-
-    /***************************************************************************
      * _setSocketRxMemBase, calculates/stores receive socket base addresses
      * Returns: null
      * Parameters: none
      **************************************************************************/
-    function _setSocketRxMemBase() {
-        gS1_RX_BASE = gS0_RX_BASE + (gS0_RX_MASK + 1);
-        gS2_RX_BASE = gS1_RX_BASE + (gS1_RX_MASK + 1);
-        gS3_RX_BASE = gS2_RX_BASE + (gS2_RX_MASK + 1);
+    function _setSocketMemBase(dir) {
+        if (dir == "rx") {
+            gS1_RX_BASE = gS0_RX_BASE + (gS0_RX_MASK + 1);
+            gS2_RX_BASE = gS1_RX_BASE + (gS1_RX_MASK + 1);
+            gS3_RX_BASE = gS2_RX_BASE + (gS2_RX_MASK + 1);
+        } else {
+            gS1_TX_BASE = gS0_TX_BASE + (gS0_TX_MASK + 1);
+            gS2_TX_BASE = gS1_TX_BASE + (gS1_TX_MASK + 1);
+            gS3_TX_BASE = gS2_TX_BASE + (gS2_TX_MASK + 1);
+        }
     }
 
     // TRANSMITION FUNCTIONS
@@ -1523,6 +1477,8 @@ class W5100 {
 
 class Wiznet {
 
+    static VERSION = [1, 0, 0];
+
     static CONNECTION_RETRY = 8;
 
     _wiz = null;
@@ -1542,17 +1498,22 @@ class Wiznet {
     constructor(spi, interruptPin, csPin = null, resetPin = null) {
 
         _connectionRetryCounter = CONNECTION_RETRY;
-        _interruptPin = interruptPin; // configure?? set up callback etc
 
+        // determine chip select pin?? redo for 005
         if (csPin == null) {
             csPin = hardware.pinD;
         } else {
-            _configurePin(csPin);
+            csPin.configure(DIGITAL_OUT, 1);
         }
 
-        if(resetPin) _configurePin(resetPin);
+        if(resetPin) resetPin.configure(DIGITAL_OUT, 1);
 
         _wiz = W5100(spi, csPin, resetPin);
+
+        setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE);
+        _clearAllInterrupts();
+
+        _interruptPin = interruptPin.configure(DIGITAL_IN_WAKEUP, _interruptHandler.bindenv(this));
     }
 
     // SETUP FUNCTIONS
@@ -1583,8 +1544,8 @@ class Wiznet {
      *              allotment for each socket (supported values are 1, 2, 4, 8)
      **************************************************************************/
     function configureSocketMemory(txMem, rxMem) {
-        _wiz.setTXMem(txMem);
-        _wiz.setRXMem(rxMem);
+        _wiz.setMemory(txMem, "tx");
+        _wiz.setMemory(rxMem, "rx");
         return this;
     }
 
@@ -1620,15 +1581,15 @@ class Wiznet {
         if ("socketMode" in connectionSettings) {
             _wiz.setSocketMode(socket, connectionSettings.socketMode);
         }  else {
-            _wiz.setSocketMode(socket, _wiz.SOCKET_MODE_TCP);
+            _wiz.setSocketMode(socket, SOCKET_MODE_TCP);
         }
 
         _wiz.setSourcePort(socket, connectionSettings.sourcePort);
-        _wiz.sendSocketCommand(socket, _wiz.SOCKET_OPEN);
+        _wiz.sendSocketCommand(socket, SOCKET_OPEN);
 
         _wiz.setDestIP(socket, connectionSettings.destIP);
         _wiz.setDestPort(socket, connectionSettings.destPort);
-        _wiz.sendSocketCommand(socket, _wiz.SOCKET_CONNECT);
+        _wiz.sendSocketCommand(socket, SOCKET_CONNECT);
 
         return connectionEstablished(socket);
     }
@@ -1640,7 +1601,7 @@ class Wiznet {
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
     function closeConnection(socket) {
-        _wiz.sendSocketCommand(socket, _wiz.SOCKET_CLOSE);
+        _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
         return connectionClosed(socket);
     }
 
@@ -1693,6 +1654,10 @@ class Wiznet {
         }
     }
 
+
+    // CONNECTIONS CHECKERS
+    // ---------------------------------------------
+
     /***************************************************************************
      * dataWaiting
      * Returns: boolean
@@ -1710,7 +1675,7 @@ class Wiznet {
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
     function connectionEstablished(socket) {
-        return (_wiz.getSocketStatus(socket) == _wiz.SOCKET_STATUS_ESTABLISHED) ? true : false;
+        return (_wiz.getSocketStatus(socket) == SOCKET_STATUS_ESTABLISHED) ? true : false;
     }
 
     /***************************************************************************
@@ -1720,8 +1685,19 @@ class Wiznet {
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
     function connectionClosed(socket) {
-        return (_wiz.getSocketStatus(socket) == _wiz.SOCKET_STATUS_CLOSED) ? true : false;
+        return (_wiz.getSocketStatus(socket) == SOCKET_STATUS_CLOSED) ? true : false;
     }
+
+    // INTERRUPT FUNCTIONS
+    // ---------------------------------------------
+
+    function setSocketInterrupts(sockets) {
+        local interrupts = CONFLICT_INT_TYPE | sockets;
+        _wiz.setInterrupt(interrupts)
+    }
+
+    // PRIVATE FUNCTIONS
+    // ---------------------------------------------
 
     /***************************************************************************
      * _checkstate, if connection established calls callback, otherwise
@@ -1735,23 +1711,23 @@ class Wiznet {
         local status = _wiz.getSocketStatus(socket);
 
         switch(status) {
-            case _wiz.SOCKET_STATUS_ESTABLISHED:
+            case SOCKET_STATUS_ESTABLISHED:
                 server.log("SOCKET_STATUS_ESTABLISHED");
                 if (cb) cb();
                 break;
-            case _wiz.SOCKET_STATUS_SYNSENT:
+            case SOCKET_STATUS_SYNSENT:
                 server.log("SOCKET_STATUS_SYNSENT");
                 _retryCheck(socket, cb);
                 break;
-            case _wiz.SOCKET_STATUS_SYNRECV:
+            case SOCKET_STATUS_SYNRECV:
                 server.log("SOCKET_STATUS_SYNRECV");
                 _retryCheck(socket, cb);
                 break;
-            case _wiz.SOCKET_STATUS_ARP:
+            case SOCKET_STATUS_ARP:
                 server.log("SOCKET_STATUS_ARP");
                 closeConnection(socket);
                 break;
-            case _wiz.SOCKET_STATUS_CLOSED:
+            case SOCKET_STATUS_CLOSED:
                 server.log("SOCKET_STATUS_CLOSED");
                 closeConnection(socket);
                 break;
@@ -1759,25 +1735,6 @@ class Wiznet {
                 closeConnection(socket);
         }
         return status;
-    }
-
-    /***************************************************************************
-     * _configurePin, configures a digital out pin pulled high
-     * Returns: null
-     * Parameters:
-     *      pin - hardware pin to configure
-     **************************************************************************/
-    function _configurePin(pin) {
-        pin.configure(DIGITAL_OUT, 1);
-    }
-
-    /***************************************************************************
-     * _resetRetryCounter, resets retryCounter to CONNECTION_RETRY value
-     * Returns: null
-     * Parameters: none
-     **************************************************************************/
-    function _resetRetryCounter() {
-        _connectionRetryCounter = CONNECTION_RETRY;
     }
 
     /***************************************************************************
@@ -1791,10 +1748,51 @@ class Wiznet {
     function _retryCheck(socket, cb) {
         _connectionRetryCounter --;
         if (_connectionRetryCounter > 0) {
-            checkstate(socket, cb);
+            _checkstate(socket, cb);
         } else {
             _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
-            _resetRetryCounter;
+            _connectionRetryCounter = CONNECTION_RETRY;
+        }
+    }
+
+
+    // PRIVATE INTERRUPT FUNCTIONS
+    // ---------------------------------------------
+
+    function _interruptHandler() {
+        local status = _wiz.getInterruptStatus();
+        if (status.CONFLICT) _handleConflictInt();
+        if (status.SOCKET_0) _handleSocketInt(0);
+        if (status.SOCKET_1) _handleSocketInt(1);
+        if (status.SOCKET_2) _handleSocketInt(2);
+        if (status.SOCKET_3) _handleSocketInt(3);
+        _wiz.clearInterrupt();
+    }
+
+    function _handleConflictInt() {
+        server.error("Conflict Interrupt Occured.  Please check IP Source and Destination addressess.");
+    }
+
+    function _handleSocketInt(socket) {
+        local status = _wiz.getSocketInterruptStatus(socket);
+        if (status.SEND_COMPLETE) server.log("Socket " + socket + " Interrupt: SEND COMPLETE");
+        if (status.TIMEOUT) server.log("Socket " + socket + " Interrupt: TIMEOUT");
+        if (status.DATA_RECEIVED) {
+            server.log("Socket " + socket + " Interrupt: DATA RECEIVED");
+            receive(socket);
+        }
+        if (status.DISCONNECTED) {
+            server.log("Socket " + socket + " Interrupt: DISCONNECTED");
+            closeConnection(socket);
+        }
+        if (status.CONNECTED) server.log("Socket " + socket + " Interrupt: CONNECTED");
+        _wiz.clearSocketInterrupt(socket);
+    }
+
+    function _clearAllInterrupts() {
+        _wiz.clearInterrupt();
+        for (local i = 0; i < 4 ; i++) {
+            _wiz.clearSocketInterrupt(i);
         }
     }
 }
