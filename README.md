@@ -28,7 +28,7 @@ wiz <- W5100(spi, cs, resetPin);
 ## Class Methods
 
 ### init(*networkSettings[, memorySettings][, mode]*)
-The *init()* method takes one required parameter: a *networkSettings* table, and two optional parameters: a *memorySettings* table and *mode*.  For details on the *networkSettings* table see [Network Settings](#network-settings) under configureNetworkSettings(). If *memorySettings* is not passed in the current memory settings will be used.  For details on *memorySettings* table see below. The mode can be selected by or-ing together one or more mode constants.  For details on *mode* see [Modes](#modes) under setMode().
+The *init()* method takes one required parameter: a *networkSettings* table, and two optional parameters: a *memorySettings* table and *mode*.  For details on the *networkSettings* table see [Network Settings](#network-settings) under configureNetworkSettings(). If *memorySettings* is not passed in the current memory settings will be used.  For details on *memorySettings* table see below. The mode can be selected by or-ing together one or more mode constants.  If *mode* is not passed in the current mode setting will be used.  For details on *mode* see [Modes](#modes) under setMode().
 
 ####Memory Settings
 Supported memory settings are 0k, 1k, 2k, 4k, 8k.  The total memory for the four sockets cannot exceede 8k.  Memory is assigned to sockets starting with socket 0.  When the 8k memory allotment is assigned remaining sockets will not have any memory, and should not be used.  Default memory settings when the chip is reset are 2k for each socket.
@@ -38,6 +38,7 @@ Supported memory settings are 0k, 1k, 2k, 4k, 8k.  The total memory for the four
 | *txMem* | array of 4 integers | The transmit memory setting for each socket.  The index of the array corresponds to each socket. |
 | *rxMem* | array of 4 integers | The receive memory setting for each socket.  The index of the array corresponds to each socket. |
 
+#####Example Code:
 ```squirrel
 networkSettings <-  { "gatewayIP"  : [192, 168, 1, 1],
                       "sourceAddr" : [0x00, 0x08, 0xDC, 0x00, 0x00, 0x01],
@@ -60,6 +61,7 @@ The *configureNetworkSettings()* method takes one required parameter: a *network
 | *sourceAddr* | array of integers | The mac address for WizNet adapter.  For mac address 0008dc000001 pass in array [0x00, 0x08, 0xDC, 0x00, 0x00, 0x01] |
 | *sourceIP* | array of integers | The IP address for WizNet adapter. For IP address 192.168.1.2 pass in array:  [192, 168, 1, 2] |
 
+#####Example Code:
 ```squirrel
 networkSettings <-  { "gatewayIP"  : [192, 168, 1, 1],
                       "sourceAddr" : [0x00, 0x08, 0xDC, 0x00, 0x00, 0x01],
@@ -71,7 +73,7 @@ wiz.configureNetworkSettings(networkSettings);
 ```
 
 ### setMode(*mode*)
-The *configureNetworkSettings()* method takes one required parameter *mode*.  The mode can be selected by or-ing together one or more mode constants.  See the table below for possible mode constants.
+The *configureNetworkSettings()* method takes one required parameter: *mode*.  The *mode* can be selected by or-ing together one or more mode constants.  See the table below for possible mode constants.
 
 #### Modes
 | Mode Constant | Description |
@@ -83,12 +85,18 @@ The *configureNetworkSettings()* method takes one required parameter *mode*.  Th
 | INDIR_BUS | Enables Indirect Bus I/F mode |
 | DEFAULT_MODE | Clears all modes listed above |
 
+#####Example Code:
 ```squirrel
 // enable Address Auto-Incrementing and Indirect Bus I/F modes
 wiz.setMode(wiz.ADDR_AUTO_INCR | wiz.INDIR_BUS);
 ```
 
 ### openConnection(*socket, networkSettings[, socketMode]*)
+The *openConnection()* method takes two required parameters: an integer *socket* and a *networkSettings* table, and one optional parameter: the *socketMode*.   Socket that selects the socket (0-3) to open the connection on.  See *Socket Network Settings* below more details on the *networkSettings* table.  The *socketMode* can be selected by or-ing together one or more socket mode constants.  See Socket Mode table below for possible mode constants.
+
+#### Socket Network Settings
+
+#### Socket Mode
      * Returns: socket connection status
      * Parameters:
      *      socket - select the socket using an integer 0-3
@@ -96,6 +104,8 @@ wiz.setMode(wiz.ADDR_AUTO_INCR | wiz.INDIR_BUS);
      *                        values are arrays of integers
      *      socketMode (optional) - set mode using SOCKET_MODES constant,
      *                              default mode is SOCKET_MODE_TCP
+
+
 
 ### closeConnection(*socket*)
      * Returns: socket connection status
@@ -409,7 +419,7 @@ function logtable(table) {
 
 wiz <- W5100(spi, cs, resetPin);
 
-// blocks writing to registers, so only use when really need to reset
+// only use when really need to reset, or add wait til connect
 // wiz.reset();
 
 wiz.init(networkSettings, memorySettings, null);

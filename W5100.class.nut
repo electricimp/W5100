@@ -259,8 +259,6 @@ class W5100 {
     static SOCKET_STATUS_LAST_ACK = 0x1D;
     static SOCKET_STATUS_ARP = 0x01;
 
-    static CONNECTION_RETRY = 8;
-
     // INTERRUPT TYPES
     static CONFLICT_INT_TYPE = 0x80;
     static UNREACH_INT_TYPE = 0x40;
@@ -310,12 +308,13 @@ class W5100 {
     gS2_TX_BASE = null;
     gS3_TX_BASE = null;
 
+    _rxSocketMemory = null;
+    _txSocketMemory = null;
+
     // CLASS VARIABLES
     _spi = null;
     _cs = null;
     _resetPin = null;
-    _connectionRetryCounter = null;
-    _receiveCallback = null;
 
     /***************************************************************************
      * Constructor
@@ -325,15 +324,12 @@ class W5100 {
      *      cs - configured chip select pin
      *      reset(optional) - configured reset pin
      **************************************************************************/
-    constructor(spi, cs, resetPin = null) {
+    constructor(spi, cs = null, resetPin = null) {
         _spi = spi;
         _cs = cs;
         _resetPin = resetPin;
 
-        _configurePin(_cs);
-        if(resetPin) _configurePin(_resetPin);
         _setMemDefaults();
-        _connectionRetryCounter = CONNECTION_RETRY;
     }
 
     // GETTERS AND SETTERS
@@ -386,8 +382,18 @@ class W5100 {
     function setRXMem(memory) {
         local rx_mem = 0x00;
         local mask = 0x00;
+        local total = 0;
+
         foreach (socket, mem_size in memory) {
             local socket_mem = 0x00;
+            local bytes = 0;
+
+            // adjust memory size if total memory is used up
+            if ( total + mem_size > 8) {
+                mem_size = 8 - total;
+                if (mem_size < 0) mem_size = 0;
+            }
+
             if(mem_size >= 8) {
                 mem_size = 8;
                 mask = MASK_8k;
@@ -401,7 +407,11 @@ class W5100 {
                 mem_size = 1;
                 mask = MASK_1k;
             }
+
+            total += mem_size;
+
             _setMask(socket, mask, "rx");
+            _rxSocketMemory[socket] = bytes;
 
             socket_mem = _setMemory(socket, mem_size);
             rx_mem = rx_mem | socket_mem;
@@ -422,8 +432,18 @@ class W5100 {
     function setTXMem(memory) {
         local tx_mem = 0x00;
         local mask = 0x00;
+        local total = 0;
+
         foreach (socket, mem_size in memory) {
             local socket_mem = 0x00;
+            local bytes = 0;
+
+            // adjust memory size if total memory is used up
+            if ( total + mem_size > 8) {
+                mem_size = 8 - total;
+                if (mem_size < 0) mem_size = 0;
+            }
+
             if(mem_size >= 8) {
                 mem_size = 8;
                 mask = MASK_8k;
@@ -437,7 +457,11 @@ class W5100 {
                 mem_size = 1;
                 mask = MASK_1k;
             }
+
+            total += mem_size;
+
             _setMask(socket, mask, "tx");
+            _txSocketMemory[socket] = bytes;
 
             socket_mem = _setMemory(socket, mem_size);
             tx_mem = tx_mem | socket_mem;
@@ -651,17 +675,6 @@ class W5100 {
                 writeReg(S3_DEST_PORT_1, port[1]);
                 break;
         }
-        return this;
-    }
-
-    /***************************************************************************
-     * setReceiveCallback
-     * Returns: this
-     * Parameters:
-     *      cb - function to be called when data is received
-     **************************************************************************/
-    function setReceiveCallback(cb) {
-        _receiveCallback = cb;
         return this;
     }
 
@@ -908,7 +921,7 @@ class W5100 {
     }
 
     /***************************************************************************
-     * getSocketTXMemBase
+     * getSocketTXMemMax
      * Returns: maximum TX memory address for specified socket
      * Parameters:
      *      socket - select the socket using an integer 0-3
@@ -957,12 +970,12 @@ class W5100 {
     }
 
     /***************************************************************************
-     * getSocketTXMemBase
+     * getSocketRXMemMax
      * Returns: maximum TX memory address for specified socket
      * Parameters:
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
-    function getSocketTXMemMax(socket) {
+    function getSocketRXMemMax(socket) {
         local max = CHIP_MAX_ADDR;
         switch(socket) {
             case 0:
@@ -1005,131 +1018,6 @@ class W5100 {
         return addr;
     }
 
-    // SETUP FUNCTIONS
-    // ---------------------------------------------
-
-    /***************************************************************************
-     * init
-     * Returns: this
-     * Parameters:
-     *      networkSettings - table with keys: gatewayIP, sourceAddr, subnet, sourceIP
-     *                        values are arrays of integers
-     *      memorySettings (optional) - table with keys: txMem, rxMem
-     *                                  values are socket memory arrays
-     *      mode - (optional) select mode using MODE constants or-ed together
-     **************************************************************************/
-    function init(networkSettings, memorySettings = null, mode = null) {
-        // check parameters
-        if (typeof memorySettings == "integer") {
-            mode = memorySettings;
-            memorySettings = null;
-        }
-
-        // set mode
-        if (mode != null) setMode(mode);
-
-        // configure network
-        configureNetworkSettings(networkSettings);
-
-        // configure memory
-        if (memorySettings != null) {
-            if ("txMem" in memorySettings && typeof memorySettings.txMem == "array") setTXMem(memorySettings.txMem);
-            if ("rxMem" in memorySettings && typeof memorySettings.rxMem == "array") setRXMem(memorySettings.rxMem);
-        }
-        return this;
-    }
-
-    /***************************************************************************
-     * reset, note this is blocking for 0.01s
-     * Returns: this
-     * Parameters: none
-     **************************************************************************/
-    function reset() {
-        if(_resetPin) {
-            _resetPin.write(0);
-            imp.sleep(0.01);
-            _resetPin.write(1);
-        } else {
-            setMode(SW_RESET);
-            imp.sleep(0.01);
-        }
-        return this;
-    }
-
-    /***************************************************************************
-     * configureNetworkSettings
-     * Returns: this
-     * Parameters:
-     *      networkSettings - table with keys: gatewayIP, sourceAddr, subnet, sourceIP
-     *                        values are arrays of integers
-     **************************************************************************/
-    function configureNetworkSettings(networkSettings) {
-        if ("gatewayIP" in networkSettings) setGatewayAddr(networkSettings.gatewayIP);
-        if ("sourceAddr" in networkSettings) setSourceHWAddr(networkSettings.sourceAddr);
-        if ("subnet" in networkSettings) setSubnet(networkSettings.subnet);
-        if ("sourceIP" in networkSettings) setSourceIP(networkSettings.sourceIP);
-        return this;
-    }
-
-    /***************************************************************************
-     * configureSocketMemory
-     * Returns: this
-     * Parameters:
-     *      txMem - an array of four integers with the desired transmit memory
-     *              allotment for each socket (supported values are 1, 2, 4, 8)
-     *      rxMem - an array of four integers with the desired receive memory
-     *              allotment for each socket (supported values are 1, 2, 4, 8)
-     **************************************************************************/
-    function configureSocketMemory(txMem, rxMem) {
-        setTXMem(txMem);
-        setRXMem(rxMem);
-        return this;
-    }
-
-
-    // CONNECTION FUNCTIONS
-    // ---------------------------------------------
-
-    /***************************************************************************
-     * openConnection
-     * Returns: socket connection status
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      networkSettings - table with keys: sourcePort, destIP, destPort
-     *                        values are arrays of integers
-     *      socketMode (optional) - set mode using SOCKET_MODES constant,
-     *                              default mode is SOCKET_MODE_TCP
-     **************************************************************************/
-    function openConnection(socket, networkSettings, socketMode = null) {
-        if (socketMode == null) socketMode = SOCKET_MODE_TCP;
-
-        if (!("sourcePort" in networkSettings)) throw "Cannot open a connection. Missing Source Port";
-        if (!("destIP" in networkSettings)) throw "Cannot open a connection. Missing Destination IP Address";
-        if (!("destPort" in networkSettings)) throw "Cannot open a connection. Missing Destination Port";
-
-        setSocketMode(socket, socketMode);
-        setSourcePort(socket, networkSettings.sourcePort);
-        sendSocketCommand(socket, SOCKET_OPEN);
-
-        setDestIP(socket, networkSettings.destIP);
-        setDestPort(socket, networkSettings.destPort);
-        sendSocketCommand(socket, SOCKET_CONNECT);
-
-        return getSocketStatus(socket);
-    }
-
-    /***************************************************************************
-     * closeConnection
-     * Returns: socket connection status
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     **************************************************************************/
-    function closeConnection(socket) {
-        sendSocketCommand(socket, SOCKET_CLOSE);
-        return getSocketStatus(socket);
-    }
-
-
     // TRANSMISSION FUNCTIONS
     // ---------------------------------------------
 
@@ -1160,119 +1048,78 @@ class W5100 {
     }
 
     /***************************************************************************
-     * transmit
-     * Returns: this
+     * readRxData
+     * Returns: data from received data register
      * Parameters:
      *      socket - select the socket using an integer 0-3
-     *      transmitData - array of data to transmit
      **************************************************************************/
-    function transmit(socket, transmitData) {
-        if (connectionEstablished(socket)) {
-            if (dataWaiting(socket) && _receiveCallback) {
-                _receiveCallback( _readRxData(socket) );
-            }
-            _sendTxData(socket, transmitData);
-        } else {
-            checkstate(socket, function() {
-                transmit(socket, transmitData);
-            });
-        }
-        return this;
+    function readRxData(socket) {
+        // get the received data size
+        local dataSize = getRxDataSize(socket);
+        local mem_base = getSocketRXMemBase(socket);
+        local mem_max = getSocketTXMemMax(socket);
+
+        // calculate offset address
+        local rx_pointer = getRxReadPointer(socket);
+        local rx_offset = rx_pointer & gS0_RX_MASK;
+        server.log("pointer: " + rx_pointer);
+        server.log("offset: " + rx_offset);
+
+        // calculate start address(physical address)
+        local rx_start_addr = rx_offset + gS0_RX_BASE;
+        server.log("start: " + rx_start_addr);
+
+        // read transmitted data here
+        local data = _readData(rx_start_addr, dataSize, mem_base, mem_max);
+
+        // increase Sn_RX_RD as length of get_size
+        rx_pointer += dataSize;
+        setRxReadPointer(socket, rx_pointer);
+
+        // set RECV command
+        sendSocketCommand(socket, SOCKET_RECEIVE);
+
+        return data;
     }
 
     /***************************************************************************
-     * receive
-     * Returns: this
+     * sendTxData
+     * Returns: status of socket connection register
      * Parameters:
      *      socket - select the socket using an integer 0-3
-     *      pollingData(optional) - number of seconds to wait
-     *                              between recieve checks
-     *      cb(optional) - callback to pass receive data to
-     *                     (note: if callback is passed in it will superceede
-     *                     the callback set by setReceiveCallback)
+     *      transmitData - data to be sent
      **************************************************************************/
-    function receive(socket, pollingInt = null, cb = null) {
-        if (typeof pollingInt == "function") {
-            cb = pollingInt;
-            pollingInt = null;
-        }
+    function sendTxData(socket, transmitData) {
+        local tx_length = transmitData.len();
+        local tx_base = getSocketTXMemBase(socket);
+        local tx_max = getSocketTXMemMax(socket);
 
-        if ( connectionEstablished(socket) ) {
-            if ( dataWaiting(socket) ) {
-                if(cb) {
-                    cb( _readRxData(socket) );
-                } else if (_receiveCallback) {
-                    _receiveCallback( _readRxData(socket) );
-                }
-            }
-            if (pollingInt != null) {
-                imp.wakeup(pollingInt, function() {
-                    receive(socket, pollingInt, cb);
-                }.bindenv(this));
-            }
-        } else {
-            checkstate(socket, function() {
-                receive(socket, pollingInt, cb);
-            });
-        }
-    }
+        // get the free TX memory size
+        // get_free_size = Sn_TX_FSR;
+        local tx_free_size = getFreeTxDataSize(socket);
+        server.log(format("size: 0x%04X", tx_free_size));
 
-    /***************************************************************************
-     * checkstate, if connection established calls callback, otherwise
-     *             retrys a handful of known connection states
-     * Returns: socket connection status
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      cb(optional) - function to be called if connection is established
-     **************************************************************************/
-    function checkstate(socket, cb = null) {
-        local status = getSocketStatus(socket);
+        // calculate offset address
+        local tx_pointer = getTxWritePointer(socket);
+        local tx_offset = tx_pointer & gS0_TX_MASK;
+        server.log(format("pointer1: 0x%04X", tx_pointer));
+        server.log(format("offset: 0x%04X", tx_offset));
 
-        switch(status) {
-            case SOCKET_STATUS_ESTABLISHED:
-                server.log("SOCKET_STATUS_ESTABLISHED");
-                if (cb) cb();
-                break;
-            case SOCKET_STATUS_SYNSENT:
-                server.log("SOCKET_STATUS_SYNSENT");
-                _retryCheck(socket, cb);
-                break;
-            case SOCKET_STATUS_SYNRECV:
-                server.log("SOCKET_STATUS_SYNRECV");
-                _retryCheck(socket, cb);
-                break;
-            case SOCKET_STATUS_ARP:
-                server.log("SOCKET_STATUS_ARP");
-                sendSocketCommand(socket, SOCKET_CLOSE);
-                break;
-            case SOCKET_STATUS_CLOSED:
-                server.log("SOCKET_STATUS_CLOSED");
-                sendSocketCommand(socket, SOCKET_CLOSE);
-                break;
-            default :
-                sendSocketCommand(socket, SOCKET_CLOSE);
-        }
-        return status;
-    }
+        // calculate start address(physical address)
+        local tx_start_addr = gS0_TX_BASE + tx_offset;
+        server.log(format("start: 0x%04X", tx_start_addr));
 
-    /***************************************************************************
-     * dataWaiting
-     * Returns: boolean
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     **************************************************************************/
-    function dataWaiting(socket) {
-        return (getRxDataSize(socket) == 0x00) ? false : true;
-    }
+        // write transmit data
+        _writeData(tx_start_addr, transmitData, tx_base, tx_max);
 
-    /***************************************************************************
-     * connectionEstablished
-     * Returns: boolean
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     **************************************************************************/
-    function connectionEstablished(socket) {
-        return (getSocketStatus(socket) == SOCKET_STATUS_ESTABLISHED) ? true : false;
+        // increase Sn_TX_WR as length of send_size
+        tx_pointer += tx_length;
+        setTxWritePointer(socket, tx_pointer)
+
+        // set SEND command
+        sendSocketCommand(socket, SOCKET_SEND);
+
+        return getSocketStatus(socket);
     }
 
 
@@ -1407,6 +1254,27 @@ class W5100 {
     }
 
 
+    // RESET FUNCTION
+    // ---------------------------------------------
+
+    /***************************************************************************
+     * reset, note this is blocking for 0.01s
+     * Returns: this
+     * Parameters: none
+     **************************************************************************/
+    function reset() {
+        if(_resetPin) {
+            _resetPin.write(0);
+            imp.sleep(0.01);
+            _resetPin.write(1);
+        } else {
+            _setMode(SW_RESET);
+            imp.sleep(0.01);
+        }
+        return this;
+    }
+
+
     // PRIVATE FUNCTIONS
     // ---------------------------------------------
 
@@ -1425,9 +1293,7 @@ class W5100 {
         gS3_RX_MASK = MASK_2k;
 
         gS0_RX_BASE = CHIP_BASE_ADDR + RX_BASE;
-        gS1_RX_BASE = gS0_RX_BASE + (gS0_RX_MASK + 1);
-        gS2_RX_BASE = gS1_RX_BASE + (gS1_RX_MASK + 1);
-        gS3_RX_BASE = gS2_RX_BASE + (gS2_RX_MASK + 1);
+        _setSocketRxMemBase();
 
         // defualt memory settings
         gS0_TX_MASK = MASK_2k;
@@ -1436,9 +1302,10 @@ class W5100 {
         gS3_TX_MASK = MASK_2k;
 
         gS0_TX_BASE = CHIP_BASE_ADDR + TX_BASE;
-        gS1_TX_BASE = gS0_TX_BASE + (gS0_TX_MASK + 1);
-        gS2_TX_BASE = gS1_TX_BASE + (gS1_TX_MASK + 1);
-        gS3_TX_BASE = gS2_TX_BASE + (gS2_TX_MASK + 1);
+        _setSocketTXMemBase();
+
+        _rxSocketMemory = [2048, 2048, 2048, 2048];
+        _txSocketMemory = [2048, 2048, 2048, 2048];
     }
 
     /***************************************************************************
@@ -1529,81 +1396,6 @@ class W5100 {
     // TRANSMITION FUNCTIONS
 
     /***************************************************************************
-     * _readRxData
-     * Returns: data from received data register
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     **************************************************************************/
-    function _readRxData(socket) {
-        // get the received data size
-        local dataSize = getRxDataSize(socket);
-        local mem_base = getSocketRXMemBase(socket);
-        local mem_max = getSocketTXMemMax(socket);
-
-        // calculate offset address
-        local rx_pointer = getRxReadPointer(socket);
-        local rx_offset = rx_pointer & gS0_RX_MASK;
-        server.log("pointer: " + rx_pointer);
-        server.log("offset: " + rx_offset);
-
-        // calculate start address(physical address)
-        local rx_start_addr = rx_offset + gS0_RX_BASE;
-        server.log("start: " + rx_start_addr);
-
-        // read transmitted data here
-        local data = _readData(rx_start_addr, dataSize, mem_base, mem_max);
-
-        // increase Sn_RX_RD as length of get_size
-        rx_pointer += dataSize;
-        setRxReadPointer(socket, rx_pointer);
-
-        // set RECV command
-        sendSocketCommand(socket, SOCKET_RECEIVE);
-
-        return data;
-    }
-
-    /***************************************************************************
-     * _sendTxData
-     * Returns: status of socket connection register
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      transmitData - data to be sent
-     **************************************************************************/
-    function _sendTxData(socket, transmitData) {
-        local tx_length = transmitData.len();
-        local tx_base = getSocketTXMemBase(socket);
-        local tx_max = getSocketTXMemMax(socket);
-
-        // get the free TX memory size
-        // get_free_size = Sn_TX_FSR;
-        local tx_free_size = getFreeTxDataSize(socket);
-        server.log(format("size: 0x%04X", tx_free_size));
-
-        // calculate offset address
-        local tx_pointer = getTxWritePointer(socket);
-        local tx_offset = tx_pointer & gS0_TX_MASK;
-        server.log(format("pointer1: 0x%04X", tx_pointer));
-        server.log(format("offset: 0x%04X", tx_offset));
-
-        // calculate start address(physical address)
-        local tx_start_addr = gS0_TX_BASE + tx_offset;
-        server.log(format("start: 0x%04X", tx_start_addr));
-
-        // write transmit data
-        _writeData(tx_start_addr, transmitData, tx_base, tx_max);
-
-        // increase Sn_TX_WR as length of send_size
-        tx_pointer += tx_length;
-        setTxWritePointer(socket, tx_pointer)
-
-        // set SEND command
-        sendSocketCommand(socket, SOCKET_SEND);
-
-        return getSocketStatus(socket);
-    }
-
-    /***************************************************************************
      * _writeData, writes data to transmit memory buffer
      * Returns: size of data written
      * Parameters:
@@ -1654,6 +1446,322 @@ class W5100 {
     // MISC HELPERS
 
     /***************************************************************************
+     * _logSockMemVars, logs socket memory variables
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
+    function _logSockMemVars() {
+        server.log("----------------------------------")
+        server.log( format("socket 0 rx mask 0x%04X", gS0_RX_MASK) );
+        server.log( format("socket 1 rx mask 0x%04X", gS1_RX_MASK) );
+        server.log( format("socket 2 rx mask 0x%04X", gS2_RX_MASK) );
+        server.log( format("socket 3 rx mask 0x%04X", gS3_RX_MASK) );
+        server.log( format("socket 0 rx base 0x%04X", gS0_RX_BASE) );
+        server.log( format("socket 1 rx base 0x%04X", gS1_RX_BASE) );
+        server.log( format("socket 2 rx base 0x%04X", gS2_RX_BASE) );
+        server.log( format("socket 3 rx base 0x%04X", gS3_RX_BASE) );
+        server.log( format("socket 0 tx mask 0x%04X", gS0_TX_MASK) );
+        server.log( format("socket 1 tx mask 0x%04X", gS1_TX_MASK) );
+        server.log( format("socket 2 tx mask 0x%04X", gS2_TX_MASK) );
+        server.log( format("socket 3 tx mask 0x%04X", gS3_TX_MASK) );
+        server.log( format("socket 0 tx base 0x%04X", gS0_TX_BASE) );
+        server.log( format("socket 1 tx base 0x%04X", gS1_TX_BASE) );
+        server.log( format("socket 2 tx base 0x%04X", gS2_TX_BASE) );
+        server.log( format("socket 3 tx base 0x%04X", gS3_TX_BASE) );
+        server.log("----------------------------------")
+    }
+
+    function _logGatewayIP() {
+        server.log("----------------------------------")
+        server.log( format("Gateway IP: %i.%i.%i.%i", readReg(GATEWAY_ADDR_0), readReg(GATEWAY_ADDR_1), readReg(GATEWAY_ADDR_2), readReg(GATEWAY_ADDR_3)) )
+        server.log("----------------------------------")
+    }
+
+    function _logSourceAddr() {
+        server.log("----------------------------------")
+        server.log( format("Source Mac Addr: %02X %02X %02X %02X %02X %02X", readReg(SOURCE_HW_ADDR_0), readReg(SOURCE_HW_ADDR_1), readReg(SOURCE_HW_ADDR_2), readReg(SOURCE_HW_ADDR_3), readReg(SOURCE_HW_ADDR_4), readReg(SOURCE_HW_ADDR_5)) )
+        server.log("----------------------------------")
+    }
+
+    function _logSubnet() {
+        server.log("----------------------------------")
+        server.log( format("Subnet Addr: %i.%i.%i.%i", readReg(SUBNET_MASK_ADDR_0), readReg(SUBNET_MASK_ADDR_1), readReg(SUBNET_MASK_ADDR_2), readReg(SUBNET_MASK_ADDR_3)) )
+        server.log("----------------------------------")
+    }
+
+    function _logSourceIP() {
+        server.log("----------------------------------")
+        server.log( format("Source IP: %i.%i.%i.%i", readReg(SOURCE_IP_ADDR_0), readReg(SOURCE_IP_ADDR_1), readReg(SOURCE_IP_ADDR_2), readReg(SOURCE_IP_ADDR_3)) )
+        server.log("----------------------------------")
+    }
+
+    function _logS0SourcePort() {
+        local p1 = readReg(S0_SOURCE_PORT_0);
+        local p2 = readReg(S0_SOURCE_PORT_1);
+        local port = (p1 * 256) + p2;
+        server.log("----------------------------------")
+        server.log( format("Source Port: %i", port) )
+        server.log("----------------------------------")
+    }
+
+    function _logS0DestPort() {
+        local p1 = readReg(S0_DEST_PORT_0);
+        local p2 = readReg(S0_DEST_PORT_1);
+        local port = (p1 * 256) + p2;
+        server.log("----------------------------------")
+        server.log( format("Source Port: %i", port) )
+        server.log("----------------------------------")
+    }
+
+    function _logS0DestIP() {
+        server.log("----------------------------------")
+        server.log( format("Destination IP: %i.%i.%i.%i", readReg(S0_DEST_IP_ADDR_0), readReg(S0_DEST_IP_ADDR_1), readReg(S0_DEST_IP_ADDR_2), readReg(S0_DEST_IP_ADDR_3)) )
+        server.log("----------------------------------")
+    }
+
+}
+
+class Wiznet {
+
+    static CONNECTION_RETRY = 8;
+
+    _wiz = null;
+    _interruptPin = null;
+    _connectionRetryCounter = null;
+    _receiveCallback = null;
+
+    /***************************************************************************
+     * Constructor
+     * Returns: null
+     * Parameters:
+     *      spi - configured spi bus, chip supports spi mode 0 or 3
+     *      interruptPin - inerrupt pin
+     *      cs(optional) -  chip select pin, pass in if not using imp005
+     *      reset(optional) - reset pin
+     **************************************************************************/
+    constructor(spi, interruptPin, csPin = null, resetPin = null) {
+
+        _connectionRetryCounter = CONNECTION_RETRY;
+        _interruptPin = interruptPin; // configure?? set up callback etc
+
+        if (csPin == null) {
+            csPin = hardware.pinD;
+        } else {
+            _configurePin(csPin);
+        }
+
+        if(resetPin) _configurePin(resetPin);
+
+        _wiz = W5100(spi, csPin, resetPin);
+    }
+
+    // SETUP FUNCTIONS
+    // ---------------------------------------------
+
+    /***************************************************************************
+     * configureNetworkSettings
+     * Returns: this
+     * Parameters:
+     *      networkSettings - table with keys: gatewayIP, sourceAddr, subnet, sourceIP
+     *                        values are arrays of integers
+     **************************************************************************/
+    function configureNetworkSettings(networkSettings) {
+        if ("gatewayIP" in networkSettings) _wiz.setGatewayAddr(networkSettings.gatewayIP);
+        if ("sourceAddr" in networkSettings) _wiz.setSourceHWAddr(networkSettings.sourceAddr);
+        if ("subnet" in networkSettings) _wiz.setSubnet(networkSettings.subnet);
+        if ("sourceIP" in networkSettings) _wiz.setSourceIP(networkSettings.sourceIP);
+        return this;
+    }
+
+    /***************************************************************************
+     * configureSocketMemory
+     * Returns: this
+     * Parameters:
+     *      txMem - an array of four integers with the desired transmit memory
+     *              allotment for each socket (supported values are 1, 2, 4, 8)
+     *      rxMem - an array of four integers with the desired receive memory
+     *              allotment for each socket (supported values are 1, 2, 4, 8)
+     **************************************************************************/
+    function configureSocketMemory(txMem, rxMem) {
+        _wiz.setTXMem(txMem);
+        _wiz.setRXMem(rxMem);
+        return this;
+    }
+
+    /***************************************************************************
+     * setReceiveCallback
+     * Returns: this
+     * Parameters:
+     *      cb - function to be called when data is received
+     **************************************************************************/
+    function setReceiveCallback(cb) {
+        _receiveCallback = cb;
+        return this;
+    }
+
+    // CONNECTION FUNCTIONS
+    // ---------------------------------------------
+
+    /***************************************************************************
+     * openConnection
+     * Returns: boolean if connection established
+     * Parameters:
+     *      connectionSettings - table with keys: socket, sourcePort, destIP, destPort, mode(optional)
+     **************************************************************************/
+    function openConnection(connectionSettings) {
+        // check for required parameters
+        if (!("socket" in connectionSettings)) throw "Cannot open a Connection.  Missing Socket";
+        if (!("sourcePort" in connectionSettings)) throw "Cannot open a connection. Missing Source Port";
+        if (!("destIP" in connectionSettings)) throw "Cannot open a connection. Missing Destination IP Address";
+        if (!("destPort" in connectionSettings)) throw "Cannot open a connection. Missing Destination Port";
+
+        local socket = connectionSettings.socket;
+
+        if ("socketMode" in connectionSettings) {
+            _wiz.setSocketMode(socket, connectionSettings.socketMode);
+        }  else {
+            _wiz.setSocketMode(socket, _wiz.SOCKET_MODE_TCP);
+        }
+
+        _wiz.setSourcePort(socket, connectionSettings.sourcePort);
+        _wiz.sendSocketCommand(socket, _wiz.SOCKET_OPEN);
+
+        _wiz.setDestIP(socket, connectionSettings.destIP);
+        _wiz.setDestPort(socket, connectionSettings.destPort);
+        _wiz.sendSocketCommand(socket, _wiz.SOCKET_CONNECT);
+
+        return connectionEstablished(socket);
+    }
+
+    /***************************************************************************
+     * closeConnection
+     * Returns: boolean if connection closed
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     **************************************************************************/
+    function closeConnection(socket) {
+        _wiz.sendSocketCommand(socket, _wiz.SOCKET_CLOSE);
+        return connectionClosed(socket);
+    }
+
+    // TRANSMISSION FUNCTIONS
+    // ---------------------------------------------
+
+    /***************************************************************************
+     * transmit
+     * Returns: this
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     *      transmitData - array of data to transmit
+     **************************************************************************/
+    function transmit(socket, transmitData) {
+        if (connectionEstablished(socket)) {
+            if (dataWaiting(socket) && _receiveCallback) {
+                _receiveCallback( _wiz.readRxData(socket) );
+            }
+            _wiz.sendTxData(socket, transmitData);
+        } else {
+            _checkstate(socket, function() {
+                transmit(socket, transmitData);
+            });
+        }
+        return this;
+    }
+
+    /***************************************************************************
+     * receive
+     * Returns: this
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     *      cb(optional) - callback to pass receive data to
+     *                     (note: if callback is passed in it will superceede
+     *                     the callback set by setReceiveCallback)
+     **************************************************************************/
+    function receive(socket, cb = null) {
+        if ( connectionEstablished(socket) ) {
+            if ( dataWaiting(socket) ) {
+                if(cb) {
+                    cb( _wiz.readRxData(socket) );
+                } else if (_receiveCallback) {
+                    _receiveCallback( _wiz.readRxData(socket) );
+                }
+            }
+        } else {
+            _checkstate(socket, function() {
+                receive(socket, cb);
+            });
+        }
+    }
+
+    /***************************************************************************
+     * dataWaiting
+     * Returns: boolean
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     **************************************************************************/
+    function dataWaiting(socket) {
+        return (_wiz.getRxDataSize(socket) == 0x00) ? false : true;
+    }
+
+    /***************************************************************************
+     * connectionEstablished
+     * Returns: boolean
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     **************************************************************************/
+    function connectionEstablished(socket) {
+        return (_wiz.getSocketStatus(socket) == _wiz.SOCKET_STATUS_ESTABLISHED) ? true : false;
+    }
+
+    /***************************************************************************
+     * connectionClosed
+     * Returns: boolean
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     **************************************************************************/
+    function connectionClosed(socket) {
+        return (_wiz.getSocketStatus(socket) == _wiz.SOCKET_STATUS_CLOSED) ? true : false;
+    }
+
+    /***************************************************************************
+     * _checkstate, if connection established calls callback, otherwise
+     *             retrys a handful of known connection states
+     * Returns: socket connection status
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     *      cb(optional) - function to be called if connection is established
+     **************************************************************************/
+    function _checkstate(socket, cb = null) {
+        local status = _wiz.getSocketStatus(socket);
+
+        switch(status) {
+            case _wiz.SOCKET_STATUS_ESTABLISHED:
+                server.log("SOCKET_STATUS_ESTABLISHED");
+                if (cb) cb();
+                break;
+            case _wiz.SOCKET_STATUS_SYNSENT:
+                server.log("SOCKET_STATUS_SYNSENT");
+                _retryCheck(socket, cb);
+                break;
+            case _wiz.SOCKET_STATUS_SYNRECV:
+                server.log("SOCKET_STATUS_SYNRECV");
+                _retryCheck(socket, cb);
+                break;
+            case _wiz.SOCKET_STATUS_ARP:
+                server.log("SOCKET_STATUS_ARP");
+                closeConnection(socket);
+                break;
+            case _wiz.SOCKET_STATUS_CLOSED:
+                server.log("SOCKET_STATUS_CLOSED");
+                closeConnection(socket);
+                break;
+            default :
+                closeConnection(socket);
+        }
+        return status;
+    }
+
+    /***************************************************************************
      * _configurePin, configures a digital out pin pulled high
      * Returns: null
      * Parameters:
@@ -1685,9 +1793,8 @@ class W5100 {
         if (_connectionRetryCounter > 0) {
             checkstate(socket, cb);
         } else {
-            sendSocketCommand(socket, SOCKET_CLOSE);
+            _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
             _resetRetryCounter;
         }
     }
-
 }
