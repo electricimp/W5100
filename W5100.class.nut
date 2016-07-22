@@ -1666,11 +1666,11 @@ class Wiznet {
             if ( dataWaiting(socket) ) {
                 if(cb) {
                     imp.wakeup(0, function() {
-                        cb( _wiz.readRxData(socket) );
+                        cb( socket, _wiz.readRxData(socket) );
                     }.bindenv(this));
                 } else if (_receiveCallback) {
                     imp.wakeup(0, function() {
-                        _receiveCallback( _wiz.readRxData(socket) );
+                        _receiveCallback( socket, _wiz.readRxData(socket) );
                     }.bindenv(this));
                 }
             }
@@ -1682,8 +1682,17 @@ class Wiznet {
     }
 
 
-    // CONNECTIONS CHECKERS
+    // HELPER FUNCTIONS
     // ---------------------------------------------
+
+    /***************************************************************************
+     * reset, note this is blocking for 0.01s
+     * Returns: this
+     * Parameters: none
+     **************************************************************************/
+    function reset() {
+        _wiz.reset();
+    }
 
     /***************************************************************************
      * dataWaiting
@@ -1841,7 +1850,9 @@ class Wiznet {
         if (status.DISCONNECTED) {
             server.log("Connection disconnected on socket " + socket);
             closeConnection(socket);
-            if(_disconnectCallback) imp.wakeup(0, _disconnectCallback.bindenv(this));
+            if(_disconnectCallback) imp.wakeup(0, function() {
+                _disconnectCallback(socket);
+            }.bindenv(this));
         }
         if (status.SEND_COMPLETE) {
             server.log("Send complete on socket " + socket);
