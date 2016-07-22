@@ -231,7 +231,7 @@ const SOCKET_MODE_PPPoE = 0x05;
 const SOCKET_OPEN = 0x01;
 const SOCKET_LISTEN = 0x02;
 const SOCKET_CONNECT = 0x04;
-const SOCKET_DICONNECT = 0x08;
+const SOCKET_DISCONNECT = 0x08;
 const SOCKET_CLOSE = 0x10;
 const SOCKET_SEND = 0x20;
 const SOCKET_SEND_MAC = 0x21;
@@ -1643,6 +1643,7 @@ class Wiznet {
      **************************************************************************/
     function closeConnection(socket) {
         _resetTXStatus();
+        _wiz.sendSocketCommand(socket, SOCKET_DISCONNECT);
         _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
         return connectionClosed(socket);
     }
@@ -1666,12 +1667,12 @@ class Wiznet {
 
         if (connectionEstablished(socket)) {
             if (dataWaiting(socket) && _receiveCallback) {
-                _receiveCallback( _wiz.readRxData(socket) );
+                _receiveCallback( socket, _wiz.readRxData(socket) );
             }
             _wiz.sendTxData(socket, transmitData);
         } else {
             _checkstate(socket, function() {
-                transmit(socket, transmitData);
+                transmit(socket, transmitData, cb);
             });
         }
         return this;
