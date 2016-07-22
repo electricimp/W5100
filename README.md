@@ -2,7 +2,7 @@
 
 Connection API for Wiznet chips.  Currently the only tested chip is the [Wiznet W5100](http://www.wiznet.co.kr/wp-content/uploads/wiznethome/Chip/W5100/Document/W5100_Datasheet_v1.2.6.pdf) all-in-one ethernet controller: Hardware TCP/IP, MAC, PHY.  The W5100 chip is a hardwired TCP/IP embedded Ethernet controller that enables easier Internet connection for embedded systems.  This library supports the SPI integration with the W5100.
 
-**To add this library to your project, add** `#require "Wiznet.class.nut:1.0.0"` **to the top of your device code.**
+**To add this code to your project, copy and paste the entire contents of the ** `Wiznet.nut` ** file at the top of your device code.**
 
 ## Class Usage
 
@@ -61,6 +61,7 @@ wiz.setReceiveCallback(logIncommingData);
 ### setDisconnectCallback(*cb*)
 The *setDisconnectCallback()* method takes one required parameter: a callback function that will be called whenever the disconnect interrupt is triggered.  The callback function takes one required parameter: the socket that disconnected.
 
+#####Example Code:
 ```squirrel
 wiz.setDisconnectCallback(function(socket) {
     connectionSettings.socket <- socket;
@@ -83,58 +84,77 @@ The *setDisconnectCallback()* method takes one required parameter: the socket in
 | S3_INT_TYPE | Enables Socket 3 interrupt |
 | NONE_INT_TYPE | Disables all socket interrupts |
 
+#####Example Code:
 ```squirrel
 // enable all socket interrupts
 wiz.setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE | S2_INT_TYPE | S3_INT_TYPE);
 ```
 
 ### openConnection(*connectionSettings*)
-The *openConnection()* method takes one required parameter: a *connectionSettings* table.
+The *openConnection()* method takes one required parameter: a *connectionSettings* table.  See the Connection Settings chart below for the required parameters.
 
-Socket that selects the socket (0-3) to open the connection on.  See *Socket Network Settings* below more details on the *networkSettings* table.  The *socketMode* can be selected by or-ing together one or more socket mode constants.  See Socket Mode table below for possible mode constants.
+#### Connection Settings
+| Key | Value Type | Description |
+| ----- | -------- | --------------- |
+| socket | integer | Socket (0-3) to open the connection on |
+| sourcePort | array of 2 integers | The source port.  For port 4242 pass in array: [0x10, 0x92] |
+| destIP | array of 4 integers | The destination IP address. For IP address 192.168.1.42 pass in array:  [192, 168, 1, 42] |
+| destPort | array of 2 integers | The destination port.  For port 4242 pass in array: [0x10, 0x92] |
 
-#### Socket Network Settings
+#####Example Code:
+```squirrel
+connectionSettings <- { "socket"     : 0,
+                        "sourcePort" : [0x10, 0x92],
+                        "destIP"     : [192, 168, 1, 42],
+                        "destPort"   : [0x10, 0x92]
+                      };
 
-#### Socket Mode
-     * Returns: socket connection status
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      networkSettings - table with keys: sourcePort, destIP, destPort
-     *                        values are arrays of integers
-     *      socketMode (optional) - set mode using SOCKET_MODES constant,
-     *                              default mode is SOCKET_MODE_TCP
-
-
+wiz.openConnection(connectionSettings)
+```
 
 ### closeConnection(*socket*)
-     * Returns: socket connection status
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
+The *openConnection()* method takes one required parameter: the *socket* to close the connection on.  Socket should be an integer 0-3.
 
+#####Example Code:
+```squirrel
+wiz.closeConnection(0);
+```
 
+### transmit(*socket, transmitData[, cb]*)
+The *transmit()* method takes two required parameters: the *socket* an integer(0-3) to transmit data on, and *transmitData* an array bytes, and one optional parameter *cb*: a callback function that is executed when transmission is complete.  The callback function takes two required parameters: *error*, a string if a transmision error occured, and *response* a string if data transmission is successful.
 
-### transmit(*socket, transmitData*)
-     * Returns: this
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      transmitData - array of data to transmit
+#####Example Code:
+```squirrel
+transmitData <- [0x1A, 0x00, 0x0C, 0x00, 0x48, 0x5D, 0x24, 0x00,
+                 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x22,
+                 0x8E, 0x53, 0xAF, 0xF0, 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00];
 
-### receive(*socket[, pollingInt][, cb]*)
-     * Returns: this
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      pollingData(optional) - number of seconds to wait
-     *                              between recieve checks
-     *      cb(optional) - callback to pass receive data to
-     *                     (note: if callback is passed in it will superceede
-     *                     the callback set by setReceiveCallback)
+wiz.transmit(0, transmitData, function(err, res) {
+    if (err) server.error(err);
+    if (res == "OK") {
+        server.log("ok to send next transmission...");
+        wiz.transmit(0, [0x66, 0x66, 0x66], function(err, res) {
+            if (err) server.error(err);
+            if (res == "OK") server.log("second transmision sent...");
+        })
+    }
+});
+```
+
+### receive(*socket[, cb]*)
+The *receive()* method takes one required parameter: the *socket* an integer(0-3) to check for data on, and one optional parameter *cb*: a callback function that is executed if data is received.  The callback function takes one required parameters: the socket on which the data was received. If a callback is passed into receive it will superceede the callback set by setReceiveCallback.
+
+**Note:** If socket interrupts are enabled there is no need to call receive.  The interrupt and receive callback will handle incoming data.
 
 
 ### reset()
-     * note this is blocking for 0.01s
-     * Returns: this
-     * Parameters: none
+The *reset()* method resets all registers to their defaults.  If a reset pin is passed in a harware reset will be invoked, if no reset pin is passed in a software reset will be called.
 
+#####Example Code:
+```squirrel
+wiz.reset();
+```
 
 ### configureSocketMemory(*txMem, rxMem*)
 By default the W5100 equally distributes the socket memory.  Each socket is given a 2k buffer for transmit and receive.  To change the memory allotted use the *configureSocketMemory()* method.  This method takes two required parameters: an array with the transmit memory settings and an array with the receive memory settings.  Supported memory settings are 0k, 1k, 2k, 4k, 8k.  The total memory for the four sockets cannot exceede 8k.  Memory is assigned to sockets starting with socket 0.  When the 8k memory allotment is assigned remaining sockets will not have any memory, and should not be used.
@@ -154,26 +174,18 @@ wiz.configureSocketMemory(txMem, rxMem);
 ```
 
 ### dataWaiting(*socket*)
-     * Returns: boolean
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
+The *dataWaiting()* method returns a boolean, if data is available.  It takes one required parameter: the *socket* an integer(0-3) on which to check for data.
 
 ### connectionEstablished(*socket*)
-     * Returns: boolean
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
+The *connectionEstablished()* method returns a boolean, if the current state of the connection is *established*.  It takes one required parameter: the *socket* an integer(0-3) on which to check the connection.
 
 ### connectionClosed(*socket*)
-     * Returns: boolean
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-
-
+The *connectionClosed()* method returns a boolean, if the current state of the connection is *closed*.  It takes one required parameter: the *socket* an integer(0-3) on which to check the connection.
 
 
 ## Extended Example
 ```squirrel
-#require "Wiznet.class.nut:1.0.0"
+// PASTE Wiznet.nut FILE HERE
 
 // HARDWARE SETUP
 // ---------------------------------------------
@@ -278,4 +290,4 @@ wiz.transmit(socket_0, transmitData, function(err, res) {
 ```
 
 ## License
-The W5100 library is licensed under the [MIT License](./LICENSE).
+The Wiznet code is licensed under the [MIT License](./LICENSE).
