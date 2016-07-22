@@ -1174,7 +1174,11 @@ class W5100 {
         local addr = blob();
         local res = blob();
 
-        _cs.write(0);
+        if(_cs) {
+            _cs.write(0);
+        } else {
+            hardware.spi0.chipselect(1);
+        }
 
         b.writen(READ_COMMAND, 'b');
         addr.writen(reg, 'w');
@@ -1183,7 +1187,11 @@ class W5100 {
         b.writen(0x00, 'b');
         res = _spi.writeread(b);
 
-        _cs.write(1);
+        if(_cs) {
+            _cs.write(1);
+        } else {
+            hardware.spi0.chipselect(0);
+        }
 
         return res[3];
     }
@@ -1199,7 +1207,11 @@ class W5100 {
         local b = blob();
         local addr = blob();
 
-        _cs.write(0);
+        if(_cs) {
+            _cs.write(0);
+        } else {
+            hardware.spi0.chipselect(1);
+        }
 
         b.writen(WRITE_COMMAND, 'b');
         addr.writen(reg, 'w');
@@ -1208,7 +1220,11 @@ class W5100 {
         b.writen(value, 'b');
         _spi.write(b);
 
-        _cs.write(1);
+        if(_cs) {
+            _cs.write(1);
+        } else {
+            hardware.spi0.chipselect(0);
+        }
     }
 
 
@@ -1229,6 +1245,7 @@ class W5100 {
             _setMode(SW_RESET);
             imp.sleep(0.01);
         }
+        _setMemDefaults();
         return this;
     }
 
@@ -1477,7 +1494,7 @@ class W5100 {
 
 class Wiznet {
 
-    static VERSION = [0, 1, 0];
+    static VERSION = [1, 0, 0];
 
     static CONNECTION_RETRY = 8;
 
@@ -1503,12 +1520,7 @@ class Wiznet {
 
         _connectionRetryCounter = CONNECTION_RETRY;
 
-        // determine chip select pin?? redo for 005
-        if (csPin == null) {
-            csPin = hardware.pinD;
-        } else {
-            csPin.configure(DIGITAL_OUT, 1);
-        }
+        if (csPin != null) { csPin.configure(DIGITAL_OUT, 1); }
 
         if(resetPin) resetPin.configure(DIGITAL_OUT, 1);
 
