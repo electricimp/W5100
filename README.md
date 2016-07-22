@@ -2,7 +2,7 @@
 
 Connection API for Wiznet chips.  Currently the only tested chip is the [Wiznet W5100](http://www.wiznet.co.kr/wp-content/uploads/wiznethome/Chip/W5100/Document/W5100_Datasheet_v1.2.6.pdf) all-in-one ethernet controller: Hardware TCP/IP, MAC, PHY.  The W5100 chip is a hardwired TCP/IP embedded Ethernet controller that enables easier Internet connection for embedded systems.  This library supports the SPI integration with the W5100.
 
-**To add this code to your project, copy and paste the entire contents of the ** `Wiznet.nut` ** file at the top of your device code.**
+**To add this code to your project, copy and paste the entire contents of the ** `Wiznet.class.nut` ** file at the top of your device code.**
 
 ## Class Usage
 
