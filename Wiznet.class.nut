@@ -1477,7 +1477,7 @@ class W5100 {
 
 class Wiznet {
 
-    static VERSION = [1, 0, 0];
+    static VERSION = [0, 1, 0];
 
     static CONNECTION_RETRY = 8;
 
