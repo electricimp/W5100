@@ -8,7 +8,13 @@ Connection API for Wiznet chips.  Currently the only tested chip is the [Wiznet 
 
 ### Constructor: Wiznet(*spi, interruptPin[, csPin][, resetPin]*)
 
-The constructor takes two (required) parameters: a configured SPI object, and the interrupt pin.  If you do not pass in a csPin you must configure the SPI with USE_CS_L constant (Note: this feature is only available on the Imp005).  If you are not using the Imp005 you must pass in the digital output pin to be used as the chip select.  If you wish to do a hardware reset of the W5100, the digital output pin connected to the chip's reset pin can also be passed in.  The pins will all be configured by the constructor, however you must configure the SPI object before calling the constructor.  The W5100 supports SPI modes 0 and 3, MSB first.  The chip can support speeds up to 14000.
+The constructor takes two (required) parameters: a configured SPI object, and the interrupt pin.  On Imp001-03 the *interruptPin* should be the wake pin. On the Imp005 any digital input may be used.
+
+If you are not using the Imp005 you must pass in the digital output pin to be used as the chip select. On the Imp005 if you do not pass in a *csPin* you must configure the SPI with the *USE_CS_L* constant.
+
+If you wish to do a hardware reset of the W5100, the digital output pin connected to the chip's reset pin can also be passed in.
+
+All pins will all be configured by the constructor, however you must configure the SPI object before calling the constructor.  The W5100 supports SPI modes 0 and 3, MSB first.  The chip can support speeds up to 14000.
 
 #####Example Code:
 ```squirrel
