@@ -1523,8 +1523,10 @@ class Wiznet {
 
         if (csPin == null) {
             // check that we are using an 005
-            if (!imp005) throw "Error: You must pass in a Chip Select Pin."
-            return;
+            if (!imp005) {
+                throw "Error: You must pass in a Chip Select Pin."
+                return;
+            }
         } else {
             csPin.configure(DIGITAL_OUT, 1);
         }
