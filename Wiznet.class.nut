@@ -1177,7 +1177,7 @@ class W5100 {
         if(_cs) {
             _cs.write(0);
         } else {
-            hardware.spi0.chipselect(1);
+            _spi.chipselect(1);
         }
 
         b.writen(READ_COMMAND, 'b');
@@ -1190,7 +1190,7 @@ class W5100 {
         if(_cs) {
             _cs.write(1);
         } else {
-            hardware.spi0.chipselect(0);
+            _spi.chipselect(0);
         }
 
         return res[3];
@@ -1210,7 +1210,7 @@ class W5100 {
         if(_cs) {
             _cs.write(0);
         } else {
-            hardware.spi0.chipselect(1);
+            _spi.chipselect(1);
         }
 
         b.writen(WRITE_COMMAND, 'b');
@@ -1223,7 +1223,7 @@ class W5100 {
         if(_cs) {
             _cs.write(1);
         } else {
-            hardware.spi0.chipselect(0);
+            _spi.chipselect(0);
         }
     }
 
