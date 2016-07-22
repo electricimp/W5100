@@ -1517,10 +1517,17 @@ class Wiznet {
      *      reset(optional) - reset pin
      **************************************************************************/
     constructor(spi, interruptPin, csPin = null, resetPin = null) {
+        local imp005 = ("spi0" in hardware);
 
         _connectionRetryCounter = CONNECTION_RETRY;
 
-        if (csPin != null) { csPin.configure(DIGITAL_OUT, 1); }
+        if (csPin == null) {
+            // check that we are using an 005
+            if (!imp005) throw "Error: You must pass in a Chip Select Pin."
+            return;
+        } else {
+            csPin.configure(DIGITAL_OUT, 1);
+        }
 
         if(resetPin) resetPin.configure(DIGITAL_OUT, 1);
 
@@ -1529,7 +1536,11 @@ class Wiznet {
         setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE);
         _clearAllInterrupts();
 
-        _interruptPin = interruptPin.configure(DIGITAL_IN_WAKEUP, _interruptHandler.bindenv(this));
+        if (imp005) {
+            _interruptPin = interruptPin.configure(DIGITAL_IN_PULLDOWN, _interruptHandler.bindenv(this));
+        } else {
+            _interruptPin = interruptPin.configure(DIGITAL_IN_WAKEUP, _interruptHandler.bindenv(this));
+        }
     }
 
     // SETUP FUNCTIONS

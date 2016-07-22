@@ -8,7 +8,20 @@ Connection API for Wiznet chips.  Currently the only tested chip is the [Wiznet 
 
 ### Constructor: Wiznet(*spi, interruptPin[, csPin][, resetPin]*)
 
-The constructor takes two (required) parameters: a configured SPI object, and the interrupt pin.  By default the Imp005 SPI0 chip select will be used.  If you are not using the Imp005 SPI0 you must pass in the digital output pin to be used as the chip select.  If you wish to do a hardware reset of the W5100, the digital output pin connected to the chip's reset pin can also be passed in.  The pins will all be configured by the constructor, however you must configure the SPI object before calling the constructor.  The W5100 supports SPI modes 0 and 3, MSB first.  The chip can support speeds up to 14000.
+The constructor takes two (required) parameters: a configured SPI object, and the interrupt pin.  If you do not pass in a csPin you must configure the SPI with USE_CS_L constant (Note: this feature is only available on the Imp005).  If you are not using the Imp005 you must pass in the digital output pin to be used as the chip select.  If you wish to do a hardware reset of the W5100, the digital output pin connected to the chip's reset pin can also be passed in.  The pins will all be configured by the constructor, however you must configure the SPI object before calling the constructor.  The W5100 supports SPI modes 0 and 3, MSB first.  The chip can support speeds up to 14000.
+
+#####Example Code:
+```squirrel
+// setup for an Imp 005
+speed <- 4000;
+spi <- hardware.spiABCD;
+spi.configure(CLOCK_IDLE_LOW | MSB_FIRST | USE_CS_L, speed);
+
+resetPin <- hardware.pinE;
+interruptPin <- hardware.pinXA;
+
+wiz <- Wiznet(spi, interruptPin, null, resetPin);
+```
 
 ```squirrel
 // setup for an Imp 001 or 002
@@ -18,8 +31,9 @@ spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, speed);
 
 cs <- hardware.pin8;
 resetPin <- hardware.pin9;
+interruptPin <- hardware.pin1;
 
-wiz <- Wiznet(spi, cs, resetPin);
+wiz <- Wiznet(spi, interruptPin, cs, resetPin);
 ```
 
 ## Class Methods
