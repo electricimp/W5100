@@ -285,7 +285,6 @@ const MASK_4k = 0x0FFF;
 const MASK_8k = 0x1FFF;
 
 class W5100 {
-
     // MEMORY VARIABLES
     gS0_RX_MASK = null;
     gS1_RX_MASK = null;
@@ -1129,6 +1128,7 @@ class W5100 {
      **************************************************************************/
     function getInterruptStatus() {
         local status = readReg(INTERRUPT);
+        // server.log(format("0x%02X", status));
         local intStatus = {
             "CONFLICT" : status & CONFLICT_INT_TYPE ? true : false,
             "UNREACH" : status & UNREACH_INT_TYPE ? true : false,
@@ -1149,6 +1149,8 @@ class W5100 {
      **************************************************************************/
     function getSocketInterruptStatus(socket) {
         local status = readReg( getSocketIntAddr(socket) );
+        // server.log(format("0x%02X", status));
+
         local intStatus = {
             "SEND_COMPLETE" : status & SEND_COMPLETE_INT_TYPE ? true : false,
             "TIMEOUT" : status & TIMEOUT_INT_TYPE ? true : false,
@@ -1497,23 +1499,24 @@ class W5100 {
         server.log( format("Destination IP: %i.%i.%i.%i", readReg(S0_DEST_IP_ADDR_0), readReg(S0_DEST_IP_ADDR_1), readReg(S0_DEST_IP_ADDR_2), readReg(S0_DEST_IP_ADDR_3)) )
         server.log("----------------------------------")
     }
-
 }
 
 class Wiznet {
+    // TODO: replace sockets with connection objects
 
     static VERSION = [0, 1, 0];
-
-    static CONNECTION_RETRY = 8;
+    static NUM_CONNECTIONS = 4;
 
     _wiz = null;
     _interruptPin = null;
-    _connectionRetryCounter = null;
 
-    _transmitting = false;
+    _avaiableConnections = null; // number of sockets available
+    _socketConnectionState = null;
     _transmitCallback = null;
     _receiveCallback = null;
     _disconnectCallback = null;
+    _connectionCallback = null;
+    _cleanupCounter = null;
 
     /***************************************************************************
      * Constructor
@@ -1527,34 +1530,30 @@ class Wiznet {
     constructor(spi, interruptPin, csPin = null, resetPin = null) {
         local imp005 = ("spi0" in hardware);
 
-        _connectionRetryCounter = CONNECTION_RETRY;
-
-        if (csPin == null) {
-            // check that we are using an 005
-            if (!imp005) {
-                throw "Error: You must pass in a Chip Select Pin."
-                return;
-            }
-        } else {
+        if (csPin != null) {
             csPin.configure(DIGITAL_OUT, 1);
+        } else if (!imp005) {
+            throw "Error: You must pass in a chip select pin."
+            return;
         }
 
         if (resetPin) resetPin.configure(DIGITAL_OUT, 1);
 
         _wiz = W5100(spi, csPin, resetPin);
 
-        // Reset chip to default state
-        reset();
+        _createConnectionStateArray();
+        _cleanupCounter = 0;
+        _cleanup(); // close stale connections
 
-        // Configure default interrupts on socket 1&2
-        setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE);
-        _clearAllInterrupts();
+        _cleanupWatchdog(function() {
+            // Reset chip to default state, blocks for 0.01s
+            reset();
+            // Configure number of connections (sets up default memory and interrupts)
+            setNumberOfAvailbleConnections(1);
+            _clearAllInterrupts();
+            _interruptPin = interruptPin.configure(DIGITAL_IN_PULLUP, _interruptHandler.bindenv(this));
+        })
 
-        if (imp005) {
-            _interruptPin = interruptPin.configure(DIGITAL_IN_PULLDOWN, _interruptHandler.bindenv(this));
-        } else {
-            _interruptPin = interruptPin.configure(DIGITAL_IN_WAKEUP, _interruptHandler.bindenv(this));
-        }
     }
 
     // SETUP FUNCTIONS
@@ -1576,21 +1575,6 @@ class Wiznet {
     }
 
     /***************************************************************************
-     * configureSocketMemory
-     * Returns: this
-     * Parameters:
-     *      txMem - an array of four integers with the desired transmit memory
-     *              allotment for each socket (supported values are 1, 2, 4, 8)
-     *      rxMem - an array of four integers with the desired receive memory
-     *              allotment for each socket (supported values are 1, 2, 4, 8)
-     **************************************************************************/
-    function configureSocketMemory(txMem, rxMem) {
-        _wiz.setMemory(txMem, "tx");
-        _wiz.setMemory(rxMem, "rx");
-        return this;
-    }
-
-    /***************************************************************************
      * setReceiveCallback
      * Returns: this
      * Parameters:
@@ -1605,11 +1589,48 @@ class Wiznet {
      * setDisconnectCallback
      * Returns: this
      * Parameters:
-     *      cb - function to be called when disconnect interrupt happens
+     *      cb - function to be called when disconnect interrupt triggered
      **************************************************************************/
     function setDisconnectCallback(cb) {
         _disconnectCallback = cb;
         return this;
+    }
+
+    /***************************************************************************
+     * setNumConnections
+     * Returns: number of actual connections configured
+     * Parameters:
+     *      numConnections - number of available connections (5100 supports 4)
+     **************************************************************************/
+    function setNumberOfAvailbleConnections(numConnections) {
+        // limit number of connections to 4
+        if (numConnections < 1) numConnections = 1;
+        if (numConnections > 4 ) numConnections = 4;
+
+        // set equal memory accross
+        switch (numConnections) {
+            case 1:
+                _avaiableConnections = [0];
+                _setSocketInterrupts(S0_INT_TYPE);
+                _configureSocketMemory([8, 0, 0, 0], [8, 0, 0, 0]);
+                break;
+            case 2:
+                _avaiableConnections = [1, 0];
+                _setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE);
+                _configureSocketMemory([4, 4, 0, 0], [4, 4, 0, 0]);
+                break;
+            case 3:
+                _avaiableConnections = [2, 1, 0];
+                _setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE | S2_INT_TYPE);
+                _configureSocketMemory([2, 2, 2, 0], [2, 2, 2, 0]);
+                break;
+            case 4:
+                _avaiableConnections = [3, 2, 1, 0];
+                _setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE | S2_INT_TYPE | S3_INT_TYPE);
+                _configureSocketMemory([2, 2, 2, 2], [2, 2, 2, 2]);
+                break;
+        }
+        return numConnections;
     }
 
 
@@ -1618,18 +1639,21 @@ class Wiznet {
 
     /***************************************************************************
      * openConnection
-     * Returns: boolean if connection established
+     * Returns: socket
      * Parameters:
-     *      connectionSettings - table with keys: socket, sourcePort, destIP, destPort, mode(optional)
+     *      connectionSettings - table with keys: socket, destIP, destPort,
+     *                                            mode(optional)
+     *      cb(optional) - function to be called when connection successfully
+     *                     established or a timeout has occurred
      **************************************************************************/
-    function openConnection(connectionSettings) {
+    function openConnection(connectionSettings, cb = null) {
         // check for required parameters
-        if (!("socket" in connectionSettings)) throw "Cannot open a Connection.  Missing Socket";
-        if (!("sourcePort" in connectionSettings)) throw "Cannot open a connection. Missing Source Port";
+        if (_avaiableConnections.len() < 1) throw "Cannot open a Connection.  All Connections Sockets in use";
         if (!("destIP" in connectionSettings)) throw "Cannot open a connection. Missing Destination IP Address";
         if (!("destPort" in connectionSettings)) throw "Cannot open a connection. Missing Destination Port";
 
-        local socket = connectionSettings.socket;
+        local socket = _avaiableConnections.pop();
+        local sourcePort = _returnRandomPort(1024, 65535); // creates a random port between 1024-65535
 
         if ("socketMode" in connectionSettings) {
             _wiz.setSocketMode(socket, connectionSettings.socketMode);
@@ -1637,27 +1661,30 @@ class Wiznet {
             _wiz.setSocketMode(socket, SOCKET_MODE_TCP);
         }
 
-        _wiz.setSourcePort(socket, connectionSettings.sourcePort);
+        // Open socket connection
+        _socketConnectionState[socket] = "CONNECTING";
+
+        _wiz.setSourcePort(socket, sourcePort);
         _wiz.sendSocketCommand(socket, SOCKET_OPEN);
 
         _wiz.setDestIP(socket, connectionSettings.destIP);
         _wiz.setDestPort(socket, connectionSettings.destPort);
         _wiz.sendSocketCommand(socket, SOCKET_CONNECT);
 
-        return connectionEstablished(socket);
+        if (cb) _connectionCallback = cb;
+
+        return socket;
     }
 
     /***************************************************************************
      * closeConnection
-     * Returns: boolean if connection closed
+     * Returns: null
      * Parameters:
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
     function closeConnection(socket) {
-        _resetTXStatus();
         _wiz.sendSocketCommand(socket, SOCKET_DISCONNECT);
-        _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
-        return connectionClosed(socket);
+        _socketConnectionState[socket] = "DISCONNECTING";
     }
 
 
@@ -1670,22 +1697,23 @@ class Wiznet {
      * Parameters:
      *      socket - select the socket using an integer 0-3
      *      transmitData - array of data to transmit
-     *      cb(optional) - callback function to be called when data
-     *                     successfully sent or timeout has occurred
+     *      cb(optional) - function to be called when data successfully
+     *                      sent or timeout has occurred
      **************************************************************************/
     function transmit(socket, transmitData, cb = null) {
-        _transmitting = true;
         _transmitCallback = cb;
 
-        if (connectionEstablished(socket)) {
+        if (_socketConnectionState[socket] == "ESTABLISHED") {
             if (dataWaiting(socket) && _receiveCallback) {
-                _receiveCallback( socket, _wiz.readRxData(socket) );
+                _receiveCallback(null, socket, _wiz.readRxData(socket));
             }
             _wiz.sendTxData(socket, transmitData);
         } else {
-            _checkstate(socket, function() {
-                transmit(socket, transmitData, cb);
-            });
+            if (cb) {
+                imp.wakeup(0, function() {
+                    cb("Error: Connection not established on socket " + socket, socket);
+                }.bindenv(this));
+            }
         }
         return this;
     }
@@ -1700,22 +1728,24 @@ class Wiznet {
      *                     the callback set by setReceiveCallback)
      **************************************************************************/
     function receive(socket, cb = null) {
-        if ( connectionEstablished(socket) ) {
+        if (_socketConnectionState[socket] == "ESTABLISHED") {
             if ( dataWaiting(socket) ) {
                 if(cb) {
                     imp.wakeup(0, function() {
-                        cb( socket, _wiz.readRxData(socket) );
+                        cb(null, socket, _wiz.readRxData(socket));
                     }.bindenv(this));
                 } else if (_receiveCallback) {
                     imp.wakeup(0, function() {
-                        _receiveCallback( socket, _wiz.readRxData(socket) );
+                        _receiveCallback(null, socket, _wiz.readRxData(socket));
                     }.bindenv(this));
                 }
             }
         } else {
-            _checkstate(socket, function() {
-                receive(socket, cb);
-            });
+            if (cb) {
+                imp.wakeup(0, function() {
+                    cb("Error: Connection not established on socket " + socket, socket, null);
+                }.bindenv(this));
+            }
         }
     }
 
@@ -1753,102 +1783,118 @@ class Wiznet {
         return (_wiz.getSocketStatus(socket) == SOCKET_STATUS_ESTABLISHED) ? true : false;
     }
 
-    /***************************************************************************
-     * connectionClosed
-     * Returns: boolean
-     * Parameters:
-     *      socket - select the socket using an integer 0-3
-     **************************************************************************/
-    function connectionClosed(socket) {
-        return (_wiz.getSocketStatus(socket) == SOCKET_STATUS_CLOSED) ? true : false;
-    }
-
-
-    // INTERRUPT FUNCTIONS
-    // ---------------------------------------------
-
-    /***************************************************************************
-     * setSocketInterrupts
-     * Returns: null
-     * Parameters:
-     *      socketInts - select socket interrupts to enable by or-ing together
-     *                   socket interrupt constants
-     **************************************************************************/
-     function setSocketInterrupts(socketInts) {
-        local interrupts = CONFLICT_INT_TYPE | socketInts;
-        _wiz.setInterrupt(interrupts)
-    }
-
 
     // PRIVATE FUNCTIONS
     // ---------------------------------------------
 
     /***************************************************************************
-     * _checkstate, if connection established calls callback, otherwise
-     *             retrys a handful of known connection states
-     * Returns: socket connection status
+     * _setSocketInterrupts
+     * Returns: this
      * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      cb(optional) - function to be called if connection is established
+     *      socketInts - select socket interrupts to enable by or-ing together
+     *                   socket interrupt constants
      **************************************************************************/
-    function _checkstate(socket, cb = null) {
-        local status = _wiz.getSocketStatus(socket);
-
-        switch(status) {
-            case SOCKET_STATUS_ESTABLISHED:
-                server.log("SOCKET_STATUS_ESTABLISHED");
-                if (cb) cb();
-                break;
-            case SOCKET_STATUS_SYNSENT:
-                server.log("SOCKET_STATUS_SYNSENT");
-                _retryCheck(socket, cb);
-                break;
-            case SOCKET_STATUS_SYNRECV:
-                server.log("SOCKET_STATUS_SYNRECV");
-                _retryCheck(socket, cb);
-                break;
-            case SOCKET_STATUS_ARP:
-                server.log("SOCKET_STATUS_ARP");
-                closeConnection(socket);
-                break;
-            case SOCKET_STATUS_CLOSED:
-                server.log("SOCKET_STATUS_CLOSED");
-                closeConnection(socket);
-                break;
-            default :
-                closeConnection(socket);
-        }
-        return status;
+     function _setSocketInterrupts(socketInts) {
+        local interrupts = CONFLICT_INT_TYPE | socketInts;
+        _wiz.setInterrupt(interrupts);
+        return this;
     }
 
     /***************************************************************************
-     * _retryCheck, either checks connection state or closes connection
-     *              based on number of retries
-     * Returns: null
+     * _configureSocketMemory
+     * Returns: this
      * Parameters:
-     *      socket - select the socket using an integer 0-3
-     *      cb - cb function to be passed back to checkstate function
+     *      txMem - an array of four integers with the desired transmit memory
+     *              allotment for each socket (supported values are 1, 2, 4, 8)
+     *      rxMem - an array of four integers with the desired receive memory
+     *              allotment for each socket (supported values are 1, 2, 4, 8)
      **************************************************************************/
-    function _retryCheck(socket, cb) {
-        _connectionRetryCounter --;
-        if (_connectionRetryCounter > 0) {
-            _checkstate(socket, cb);
-        } else {
-            closeConnection(socket);
-            _connectionRetryCounter = CONNECTION_RETRY;
-        }
+    function _configureSocketMemory(txMem, rxMem) {
+        _wiz.setMemory(txMem, "tx");
+        _wiz.setMemory(rxMem, "rx");
+        return this;
     }
 
     /***************************************************************************
-     * _resetTXStatus, resets transmitting flag and transmit callback
+     * _returnRandomPort
+     * Returns: an array with a random port between min and max
+     * Parameters:
+     *      min - lowest possible port number
+     *      max - highest possible port number
+     **************************************************************************/
+    function _returnRandomPort(min, max) {
+        local port = (1.0 * math.rand() / RAND_MAX) * (max + 1 - min);
+        port = port.tointeger() + min;
+
+        local p1 = port >> 8;
+        local p2 = port & 0xFF;
+
+        return [p1, p2];
+    }
+
+    /***************************************************************************
+     * _clearTXCallback, resets transmit callback
      * Returns: null
      * Parameters: none
      **************************************************************************/
-    function _resetTXStatus() {
-        _transmitting = false;
+    function _clearTXCallback() {
         _transmitCallback = null;
     }
 
+    /***************************************************************************
+     * _createConnectionStateArray, sets local connection state for all sockets
+     *                              to null
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
+    function _createConnectionStateArray() {
+        _socketConnectionState = [];
+        for (local socket = 0; socket < NUM_CONNECTIONS ; socket++) {
+            _socketConnectionState.push(null);
+        }
+    }
+
+    /***************************************************************************
+     * _cleanup, if any sockets have open connections it disconnects them
+     * Returns: null
+     * Parameters: none
+     **************************************************************************/
+    function _cleanup() {
+        // close any sockets that have open connections
+        for (local socket = 0; socket < NUM_CONNECTIONS ; socket++) {
+            if( connectionEstablished(socket) ) {
+                _wiz.sendSocketCommand(socket, SOCKET_DISCONNECT);
+                imp.sleep(0.01);
+                _closeSocket(socket);
+            } else {
+                _socketConnectionState[socket] = "CLOSED";
+                _cleanupCounter++;
+            }
+        }
+
+    }
+
+    function _cleanupWatchdog(cb) {
+        if (_cleanupCounter < NUM_CONNECTIONS) {
+            imp.sleep(0.01);
+            _cleanupWatchdog(cb);
+        } else {
+            _cleanupCounter = 0;
+            cb();
+        }
+    }
+
+
+    function _closeSocket(socket) {
+        if ( _wiz.getSocketStatus(socket) != SOCKET_STATUS_CLOSED) {
+            imp.sleep(0.01);
+            _closeSocket(socket);
+        } else {
+            _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
+            _socketConnectionState[socket] = "CLOSED";
+            _cleanupCounter++;
+        }
+    }
 
     // PRIVATE INTERRUPT FUNCTIONS
     // ---------------------------------------------
@@ -1866,7 +1912,6 @@ class Wiznet {
         if (status.SOCKET_1) _handleSocketInt(1);
         if (status.SOCKET_2) _handleSocketInt(2);
         if (status.SOCKET_3) _handleSocketInt(3);
-        _wiz.clearInterrupt();
     }
 
     /***************************************************************************
@@ -1876,6 +1921,7 @@ class Wiznet {
      **************************************************************************/
     function _handleConflictInt() {
         server.error("Conflict Interrupt Occured.  Please check IP Source and Destination addressess.");
+        _wiz.clearInterrupt(CONFLICT_INT_TYPE);
     }
 
     /***************************************************************************
@@ -1885,41 +1931,87 @@ class Wiznet {
      **************************************************************************/
     function _handleSocketInt(socket) {
         local status = _wiz.getSocketInterruptStatus(socket);
-        if (status.CONNECTED) server.log("Connection established on socket " + socket);
+
+        if (status.CONNECTED) {
+            server.log("Connection established on socket " + socket);
+            _wiz.clearSocketInterrupt(socket, CONNECTED_INT_TYPE);
+
+            _socketConnectionState[socket] = "ESTABLISHED";
+            if (_connectionCallback) {
+                local cb = _connectionCallback;
+                _connectionCallback = null;
+
+                imp.wakeup(0, function() {
+                    cb(null, socket);
+                }.bindenv(this))
+            }
+        }
         if (status.DISCONNECTED) {
             server.log("Connection disconnected on socket " + socket);
-            closeConnection(socket);
-            if(_disconnectCallback) imp.wakeup(0, function() {
-                _disconnectCallback(socket);
-            }.bindenv(this));
+            _wiz.clearSocketInterrupt(socket, DISCONNECTED_INT_TYPE);
+
+            _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
+            _socketConnectionState[socket] = "CLOSED";
+            _avaiableConnections.push(socket);
+
+            // clear transmit and connection callbacks
+            _clearTXCallback();
+            _connectionCallback = null;
+
+            // call disconnected callback
+            if (_disconnectCallback) {
+                imp.wakeup(0, function() {
+                    _disconnectCallback(socket);
+                }.bindenv(this));
+            }
         }
         if (status.SEND_COMPLETE) {
             server.log("Send complete on socket " + socket);
-            if (_transmitting && _transmitCallback) {
+            _wiz.clearSocketInterrupt(socket, SEND_COMPLETE_INT_TYPE);
+
+            // call transmitting callback
+            if (_transmitCallback) {
                 local cb = _transmitCallback;
-                _resetTXStatus();
+                _clearTXCallback();
 
                 imp.wakeup(0, function() {
-                    cb(null, "OK");
+                    cb(null, socket);
                 }.bindenv(this))
             }
         }
         if (status.TIMEOUT) {
             server.log("Timeout occurred on socket " + socket);
-            if (_transmitting && _transmitCallback) {
-                local cb = _transmitCallback;
-                _resetTXStatus();
+            _wiz.clearSocketInterrupt(socket, TIMEOUT_INT_TYPE);
 
-                imp.wakeup(0, function() {
-                    cb("Error: timeout", null);
-                }.bindenv(this))
+            if (_socketConnectionState[socket] == "CONNECTING") {
+                _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
+                _socketConnectionState[socket] = "CLOSED";
+                _avaiableConnections.push(socket);
+
+                if (_connectionCallback) {
+                    local cb = _connectionCallback;
+                    _connectionCallback = null;
+
+                    imp.wakeup(0, function() {
+                        cb("Error: Connection Timeout on socket " + socket, socket);
+                    }.bindenv(this))
+                }
+            } else {
+                if (_transmitCallback) {
+                    local cb = _transmitCallback;
+                    _clearTXCallback();
+
+                    imp.wakeup(0, function() {
+                        cb("Error: Transmission Timeout on socket " + socket, socket);
+                    }.bindenv(this))
+                }
             }
         }
         if (status.DATA_RECEIVED) {
             server.log("Data received on socket " + socket);
-            receive(socket);
+            _wiz.clearSocketInterrupt(socket, DATA_RECEIVED_INT_TYPE);
+            receive(socket); // process incoming data
         }
-        _wiz.clearSocketInterrupt(socket);
     }
 
     /***************************************************************************
@@ -1934,10 +2026,47 @@ class Wiznet {
         }
     }
 
-    function _logInterruptStatus(socket) {
+    /***************************************************************************
+     * _logSocketInterruptStatus
+     * Returns: null
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     **************************************************************************/
+    function _logSocketInterruptStatus(socket) {
         local status = _wiz.getSocketInterruptStatus(socket);
         foreach (k, v in status) {
             server.log(k + ": " + v)
+        }
+    }
+
+    /***************************************************************************
+     * _logConnectionState
+     * Returns: null
+     * Parameters:
+     *      socket - select the socket using an integer 0-3
+     **************************************************************************/
+    function _logConnectionState(socket) {
+        local status = _wiz.getSocketStatus(socket);
+
+        switch(status) {
+            case SOCKET_STATUS_ESTABLISHED:
+                server.log("SOCKET_STATUS_ESTABLISHED");
+                break;
+            case SOCKET_STATUS_SYNSENT:
+                server.log("SOCKET_STATUS_SYNSENT");
+                break;
+            case SOCKET_STATUS_SYNRECV:
+                server.log("SOCKET_STATUS_SYNRECV");
+                break;
+            case SOCKET_STATUS_ARP:
+                server.log("SOCKET_STATUS_ARP");
+                break;
+            case SOCKET_STATUS_CLOSED:
+                server.log("SOCKET_STATUS_CLOSED");
+                break;
+            default :
+                server.log(status);
+                break;
         }
     }
 }
