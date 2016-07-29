@@ -2,6 +2,10 @@
 const READ_COMMAND = 0x0F;
 const WRITE_COMMAND = 0xF0;
 
+const TOTAL_SUPPORTED_SOCKETS = 4;
+const MAX_TX_MEM_BUFFER = 8;
+const MAX_RX_MEM_BUFFER = 8;
+
 // COMMON REGISTERS
 // MR
 const MODE = 0x0000;
@@ -285,6 +289,10 @@ const MASK_4k = 0x0FFF;
 const MASK_8k = 0x1FFF;
 
 class W5100 {
+    static VERSION = [0, 1, 0];
+}
+
+class W5100.Driver {
     // MEMORY VARIABLES
     gS0_RX_MASK = null;
     gS1_RX_MASK = null;
@@ -978,6 +986,15 @@ class W5100 {
         return addr;
     }
 
+    function getTotalSupportedSockets() {
+        return TOTAL_SUPPORTED_SOCKETS;
+    }
+
+    function getMemoryInfo() {
+        // mem_block_sizes - an array with supported values highest to lowest
+        return {"tx_max" : MAX_TX_MEM_BUFFER, "rx_max": MAX_RX_MEM_BUFFER, "mem_block_sizes" : [8, 4, 2, 1, 0]}
+    }
+
     // TRANSMISSION FUNCTIONS
     // ---------------------------------------------
 
@@ -1501,22 +1518,66 @@ class W5100 {
     }
 }
 
-class Wiznet {
-    // TODO: replace sockets with connection objects
+class W5100.Connection {
+    socket = null;
+    state = null;
+    handlers = null;
+    settings = null;
 
-    static VERSION = [0, 1, 0];
-    static NUM_CONNECTIONS = 4;
+    constructor(_socket, _state, _settings, _handlers = {}) {
+        socket = _socket;
+        state = _state;
+        handlers = _handlers;
+        settings = _settings;
+    }
+
+    function setDisconnectHandler(cb) {
+        handlers["disconnect"] <- cb;
+        return this;
+    }
+
+    function setReceiveHandler(cb) {
+        handlers["receive"] <- cb;
+        return this;
+    }
+
+    function setTransmitHandler(cb) {
+        handlers["transmit"] <- cb;
+        return this;
+    }
+
+    function setConnectHandler(cb) {
+        handlers["connect"] <- cb;
+        return this;
+    }
+
+    function setState(state) {
+        state = state;
+        return this;
+    }
+
+    function setSourcePort(port) {
+        settings["sourcePort"] <- port;
+        return this;
+    }
+
+    function getHandler(handlerName) {
+        return (handlerName in handlers) ? handlers[handlerName] : null;
+    }
+}
+
+class W5100.API {
 
     _wiz = null;
     _interruptPin = null;
 
-    _avaiableConnections = null; // number of sockets available
+    _totalSockets = null;
+    _avaiableConnections = null;
+    _connections = null;
     _socketConnectionState = null;
-    _transmitCallback = null;
-    _receiveCallback = null;
-    _disconnectCallback = null;
-    _connectionCallback = null;
     _cleanupCounter = null;
+
+
 
     /***************************************************************************
      * Constructor
@@ -1539,7 +1600,7 @@ class Wiznet {
 
         if (resetPin) resetPin.configure(DIGITAL_OUT, 1);
 
-        _wiz = W5100(spi, csPin, resetPin);
+        _wiz = W5100.Driver(spi, csPin, resetPin);
 
         _createConnectionStateArray();
         _cleanupCounter = 0;
@@ -1549,6 +1610,7 @@ class Wiznet {
             // Reset chip to default state, blocks for 0.01s
             reset();
             // Configure number of connections (sets up default memory and interrupts)
+            _connections = {};
             setNumberOfAvailbleConnections(1);
             _clearAllInterrupts();
             _interruptPin = interruptPin.configure(DIGITAL_IN_PULLUP, _interruptHandler.bindenv(this));
@@ -1580,8 +1642,8 @@ class Wiznet {
      * Parameters:
      *      cb - function to be called when data is received
      **************************************************************************/
-    function setReceiveCallback(cb) {
-        _receiveCallback = cb;
+    function setReceiveCallback(connection, cb) {
+        connection.setReceiveHandler(cb);
         return this;
     }
 
@@ -1591,8 +1653,8 @@ class Wiznet {
      * Parameters:
      *      cb - function to be called when disconnect interrupt triggered
      **************************************************************************/
-    function setDisconnectCallback(cb) {
-        _disconnectCallback = cb;
+    function setDisconnectCallback(connection, cb) {
+        connection.setDisconnectHandler(cb);
         return this;
     }
 
@@ -1605,29 +1667,33 @@ class Wiznet {
     function setNumberOfAvailbleConnections(numConnections) {
         // limit number of connections to 4
         if (numConnections < 1) numConnections = 1;
-        if (numConnections > 4 ) numConnections = 4;
+        if (numConnections > _totalSockets ) numConnections = _totalSockets;
+
+        local memoryInfo = _wiz.getMemoryInfo();
+        local tx_mem = _getMaxMemValue(numConnections, memoryInfo.tx_max, memoryInfo.mem_block_sizes);
+        local rx_mem = _getMaxMemValue(numConnections, memoryInfo.rx_max, memoryInfo.mem_block_sizes);
 
         // set equal memory accross
         switch (numConnections) {
             case 1:
                 _avaiableConnections = [0];
                 _setSocketInterrupts(S0_INT_TYPE);
-                _configureSocketMemory([8, 0, 0, 0], [8, 0, 0, 0]);
+                _configureSocketMemory([tx_mem, 0, 0, 0], [rx_mem, 0, 0, 0]);
                 break;
             case 2:
                 _avaiableConnections = [1, 0];
                 _setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE);
-                _configureSocketMemory([4, 4, 0, 0], [4, 4, 0, 0]);
+                _configureSocketMemory([tx_mem, tx_mem, 0, 0], [rx_mem, rx_mem, 0, 0]);
                 break;
             case 3:
                 _avaiableConnections = [2, 1, 0];
                 _setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE | S2_INT_TYPE);
-                _configureSocketMemory([2, 2, 2, 0], [2, 2, 2, 0]);
+                _configureSocketMemory([tx_mem, tx_mem, tx_mem, 0], [rx_mem, rx_mem, rx_mem, 0]);
                 break;
             case 4:
                 _avaiableConnections = [3, 2, 1, 0];
                 _setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE | S2_INT_TYPE | S3_INT_TYPE);
-                _configureSocketMemory([2, 2, 2, 2], [2, 2, 2, 2]);
+                _configureSocketMemory([tx_mem, tx_mem, tx_mem, tx_mem], [rx_mem, rx_mem, rx_mem, rx_mem]);
                 break;
         }
         return numConnections;
@@ -1653,7 +1719,7 @@ class Wiznet {
         if (!("destPort" in connectionSettings)) throw "Cannot open a connection. Missing Destination Port";
 
         local socket = _avaiableConnections.pop();
-        local sourcePort = _returnRandomPort(1024, 65535); // creates a random port between 1024-65535
+        connectionSettings.sourcePort <- _returnRandomPort(1024, 65535); // creates a random port between 1024-65535
 
         if ("socketMode" in connectionSettings) {
             _wiz.setSocketMode(socket, connectionSettings.socketMode);
@@ -1664,16 +1730,19 @@ class Wiznet {
         // Open socket connection
         _socketConnectionState[socket] = "CONNECTING";
 
-        _wiz.setSourcePort(socket, sourcePort);
+        _wiz.setSourcePort(socket, connectionSettings.sourcePort);
         _wiz.sendSocketCommand(socket, SOCKET_OPEN);
 
         _wiz.setDestIP(socket, connectionSettings.destIP);
         _wiz.setDestPort(socket, connectionSettings.destPort);
         _wiz.sendSocketCommand(socket, SOCKET_CONNECT);
 
-        if (cb) _connectionCallback = cb;
+        // create connection object
+        local connection = W5100.Connection(socket, _socketConnectionState[socket], connectionSettings);
+        _connections[socket] <- connection;
+        if (cb) connection.setConnectHandler(cb);
 
-        return socket;
+        return connection;
     }
 
     /***************************************************************************
@@ -1682,9 +1751,9 @@ class Wiznet {
      * Parameters:
      *      socket - select the socket using an integer 0-3
      **************************************************************************/
-    function closeConnection(socket) {
-        _wiz.sendSocketCommand(socket, SOCKET_DISCONNECT);
-        _socketConnectionState[socket] = "DISCONNECTING";
+    function closeConnection(connection) {
+        _wiz.sendSocketCommand(connection.socket, SOCKET_DISCONNECT);
+        _updateConnectionState(connection, "DISCONNECTING");
     }
 
 
@@ -1700,18 +1769,21 @@ class Wiznet {
      *      cb(optional) - function to be called when data successfully
      *                      sent or timeout has occurred
      **************************************************************************/
-    function transmit(socket, transmitData, cb = null) {
-        _transmitCallback = cb;
+    function transmit(connection, transmitData, cb = null) {
+        local socket = connection.socket;
+        local receiveHandler = connection.getHandler("receive");
 
         if (_socketConnectionState[socket] == "ESTABLISHED") {
-            if (dataWaiting(socket) && _receiveCallback) {
-                _receiveCallback(null, socket, _wiz.readRxData(socket));
+            // _transmitCallback = cb;
+            connection.setTransmitHandler(cb);
+            if (dataWaiting(socket) && receiveHandler) {
+                receiveHandler(null, connection, _wiz.readRxData(socket));
             }
             _wiz.sendTxData(socket, transmitData);
         } else {
             if (cb) {
                 imp.wakeup(0, function() {
-                    cb("Error: Connection not established on socket " + socket, socket);
+                    cb("Error: Connection not established.", connection);
                 }.bindenv(this));
             }
         }
@@ -1727,23 +1799,30 @@ class Wiznet {
      *                     (note: if callback is passed in it will superceede
      *                     the callback set by setReceiveCallback)
      **************************************************************************/
-    function receive(socket, cb = null) {
+    function receive(connection, cb = null) {
+        local socket = connection.socket;
+        local receiveHandler = connection.getHandler("receive");
+
         if (_socketConnectionState[socket] == "ESTABLISHED") {
             if ( dataWaiting(socket) ) {
                 if(cb) {
                     imp.wakeup(0, function() {
                         cb(null, socket, _wiz.readRxData(socket));
                     }.bindenv(this));
-                } else if (_receiveCallback) {
+                } else if (receiveHandler) {
                     imp.wakeup(0, function() {
-                        _receiveCallback(null, socket, _wiz.readRxData(socket));
+                        receiveHandler(null, socket, _wiz.readRxData(socket));
                     }.bindenv(this));
                 }
             }
         } else {
             if (cb) {
                 imp.wakeup(0, function() {
-                    cb("Error: Connection not established on socket " + socket, socket, null);
+                    cb("Error: Connection not established.", connection, null);
+                }.bindenv(this));
+            } else if (receiveHandler) {
+                imp.wakeup(0, function() {
+                    receiveHandler("Error: Connection not established.", connection, null);
                 }.bindenv(this));
             }
         }
@@ -1786,6 +1865,22 @@ class Wiznet {
 
     // PRIVATE FUNCTIONS
     // ---------------------------------------------
+
+    function _getMaxMemValue(numValues, max, blockSizes) {
+        // make sure memory values are in desending order
+        blockSizes.sort();
+        blockSizes.reverse();
+
+        local memory = max / numValues;
+
+        foreach (value in blockSizes) {
+            if (memory >= value) {
+                memory = value;
+                break;
+            }
+        }
+        return memory;
+    }
 
     /***************************************************************************
      * _setSocketInterrupts
@@ -1837,9 +1932,10 @@ class Wiznet {
      * Returns: null
      * Parameters: none
      **************************************************************************/
-    function _clearTXCallback() {
-        _transmitCallback = null;
-    }
+    // function _clearTXCallback(connection) {
+    //     // _transmitCallback = null;
+
+    // }
 
     /***************************************************************************
      * _createConnectionStateArray, sets local connection state for all sockets
@@ -1849,7 +1945,8 @@ class Wiznet {
      **************************************************************************/
     function _createConnectionStateArray() {
         _socketConnectionState = [];
-        for (local socket = 0; socket < NUM_CONNECTIONS ; socket++) {
+        _totalSockets = _wiz.getTotalSupportedSockets();
+        for (local socket = 0; socket < _totalSockets ; socket++) {
             _socketConnectionState.push(null);
         }
     }
@@ -1861,7 +1958,7 @@ class Wiznet {
      **************************************************************************/
     function _cleanup() {
         // close any sockets that have open connections
-        for (local socket = 0; socket < NUM_CONNECTIONS ; socket++) {
+        for (local socket = 0; socket < _totalSockets ; socket++) {
             if( connectionEstablished(socket) ) {
                 _wiz.sendSocketCommand(socket, SOCKET_DISCONNECT);
                 imp.sleep(0.01);
@@ -1875,7 +1972,7 @@ class Wiznet {
     }
 
     function _cleanupWatchdog(cb) {
-        if (_cleanupCounter < NUM_CONNECTIONS) {
+        if (_cleanupCounter < _totalSockets) {
             imp.sleep(0.01);
             _cleanupWatchdog(cb);
         } else {
@@ -1924,6 +2021,12 @@ class Wiznet {
         _wiz.clearInterrupt(CONFLICT_INT_TYPE);
     }
 
+    function _updateConnectionState(connection, state) {
+            _socketConnectionState[connection.socket] = state;
+            connection.setState(state);
+            return this;
+    }
+
     /***************************************************************************
      * _handleSocketInt, handles/clears the specified socket interrupt
      * Returns: null
@@ -1931,18 +2034,20 @@ class Wiznet {
      **************************************************************************/
     function _handleSocketInt(socket) {
         local status = _wiz.getSocketInterruptStatus(socket);
+        local connection = _connections[socket];
 
         if (status.CONNECTED) {
             server.log("Connection established on socket " + socket);
             _wiz.clearSocketInterrupt(socket, CONNECTED_INT_TYPE);
 
-            _socketConnectionState[socket] = "ESTABLISHED";
+            _updateConnectionState(connection, "ESTABLISHED");
+
+            local _connectionCallback = connection.getHandler("connect");
             if (_connectionCallback) {
-                local cb = _connectionCallback;
-                _connectionCallback = null;
+                connection.setConnectHandler(null);
 
                 imp.wakeup(0, function() {
-                    cb(null, socket);
+                    _connectionCallback(null, connection);
                 }.bindenv(this))
             }
         }
@@ -1951,17 +2056,19 @@ class Wiznet {
             _wiz.clearSocketInterrupt(socket, DISCONNECTED_INT_TYPE);
 
             _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
-            _socketConnectionState[socket] = "CLOSED";
+            _updateConnectionState(connection, "CLOSED");
+            _connections.rawdelete(connection.socket);
             _avaiableConnections.push(socket);
 
             // clear transmit and connection callbacks
-            _clearTXCallback();
-            _connectionCallback = null;
+            connection.setTransmitHandler(null);
+            connection.setConnectHandler(null);
 
+            local _disconnectCallback = connection.getHandler("disconnect");
             // call disconnected callback
             if (_disconnectCallback) {
                 imp.wakeup(0, function() {
-                    _disconnectCallback(socket);
+                    _disconnectCallback(connection);
                 }.bindenv(this));
             }
         }
@@ -1970,12 +2077,12 @@ class Wiznet {
             _wiz.clearSocketInterrupt(socket, SEND_COMPLETE_INT_TYPE);
 
             // call transmitting callback
+            local _transmitCallback = connection.getHandler("transmit");
             if (_transmitCallback) {
-                local cb = _transmitCallback;
-                _clearTXCallback();
+                connection.setTransmitHandler(null);
 
                 imp.wakeup(0, function() {
-                    cb(null, socket);
+                    _transmitCallback(null, connection);
                 }.bindenv(this))
             }
         }
@@ -1985,24 +2092,25 @@ class Wiznet {
 
             if (_socketConnectionState[socket] == "CONNECTING") {
                 _wiz.sendSocketCommand(socket, SOCKET_CLOSE);
-                _socketConnectionState[socket] = "CLOSED";
+                _updateConnectionState(connection, "CLOSED");
+                _connections.rawdelete(connection.socket);
                 _avaiableConnections.push(socket);
 
+                local _connectionCallback = connection.getHandler("connect");
                 if (_connectionCallback) {
-                    local cb = _connectionCallback;
-                    _connectionCallback = null;
+                    connection.setConnectHandler(null);
 
                     imp.wakeup(0, function() {
-                        cb("Error: Connection Timeout on socket " + socket, socket);
+                        _connectionCallback("Error: Connection Timeout on socket " + socket, connection);
                     }.bindenv(this))
                 }
             } else {
+                local _transmitCallback = connection.getHandler("transmit");
                 if (_transmitCallback) {
-                    local cb = _transmitCallback;
-                    _clearTXCallback();
+                    connection.setTransmitHandler(null);
 
                     imp.wakeup(0, function() {
-                        cb("Error: Transmission Timeout on socket " + socket, socket);
+                        _transmitCallback("Error: Transmission Timeout on socket " + socket, connection);
                     }.bindenv(this))
                 }
             }
@@ -2010,7 +2118,7 @@ class Wiznet {
         if (status.DATA_RECEIVED) {
             server.log("Data received on socket " + socket);
             _wiz.clearSocketInterrupt(socket, DATA_RECEIVED_INT_TYPE);
-            receive(socket); // process incoming data
+            receive(connection); // process incoming data
         }
     }
 
