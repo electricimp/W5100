@@ -1774,7 +1774,6 @@ class W5100.API {
         local receiveHandler = connection.getHandler("receive");
 
         if (_socketConnectionState[socket] == "ESTABLISHED") {
-            // _transmitCallback = cb;
             connection.setTransmitHandler(cb);
             if (dataWaiting(socket) && receiveHandler) {
                 receiveHandler(null, connection, _wiz.readRxData(socket));
@@ -1926,16 +1925,6 @@ class W5100.API {
 
         return [p1, p2];
     }
-
-    /***************************************************************************
-     * _clearTXCallback, resets transmit callback
-     * Returns: null
-     * Parameters: none
-     **************************************************************************/
-    // function _clearTXCallback(connection) {
-    //     // _transmitCallback = null;
-
-    // }
 
     /***************************************************************************
      * _createConnectionStateArray, sets local connection state for all sockets
