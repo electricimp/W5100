@@ -1,20 +1,20 @@
-#Wiznet
+#Wiznet_5100
 
-Connection API for Wiznet chips.  Currently the only tested chip is the [Wiznet W5100](http://www.wiznet.co.kr/wp-content/uploads/wiznethome/Chip/W5100/Document/W5100_Datasheet_v1.2.6.pdf) all-in-one ethernet controller: Hardware TCP/IP, MAC, PHY.  The W5100 chip is a hardwired TCP/IP embedded Ethernet controller that enables easier Internet connection for embedded systems.  This library supports the SPI integration with the W5100.
+Connection API for Wiznet chip [W5100](http://www.wiznet.co.kr/wp-content/uploads/wiznethome/Chip/W5100/Document/W5100_Datasheet_v1.2.6.pdf).  The W5100 chip is a hardwired TCP/IP embedded Ethernet controller that enables easier Internet connection for embedded systems.  This library supports the SPI integration with the W5100.
 
-**To add this code to your project, copy and paste the entire contents of the ** `Wiznet.class.nut` ** file at the top of your device code.**
+**To add this code to your project, copy and paste the entire contents of the ** `W5100.class.nut` ** file just below your library *#require* statements at the top of your device code.**
 
 ## Class Usage
 
-### Constructor: Wiznet(*spi, interruptPin[, csPin][, resetPin]*)
+### Constructor: W5100.API(*spi, interruptPin[, csPin][, resetPin]*)
 
-The constructor takes two (required) parameters: a configured SPI object, and the interrupt pin.  On Imp001-03 the *interruptPin* should be the wake pin. On the Imp005 any digital input may be used.
+The constructor takes two (required) parameters: a configured SPI object, and the interrupt pin.  The *interruptPin* can be any digital input that supports a callback on pin state change.
 
 If you are not using the Imp005 you must pass in the digital output pin to be used as the chip select. On the Imp005 if you do not pass in a *csPin* you must configure the SPI with the *USE_CS_L* constant.
 
-If you wish to do a hardware reset of the W5100, the digital output pin connected to the chip's reset pin can also be passed in.
+If you wish to do a hardware reset of the W5500, the digital output pin connected to the chip's reset pin can also be passed in.  Note: the W5500 datasheet recomends a hardware reset, as the software reset is not reliable.
 
-All pins will all be configured by the constructor, however you must configure the SPI object before calling the constructor.  The W5100 supports SPI modes 0 and 3, MSB first.  The chip can support speeds up to 14000.
+All pins will all be configured by the constructor, however you must configure the SPI object before calling the constructor.  The W5500 supports SPI modes 0 and 3, MSB first, and the chip can support SPI speeds up to 14000.
 
 #####Example Code:
 ```squirrel
@@ -23,7 +23,7 @@ speed <- 4000;
 spi <- hardware.spiABCD;
 spi.configure(CLOCK_IDLE_LOW | MSB_FIRST | USE_CS_L, speed);
 
-resetPin <- hardware.pinE;
+resetPin <- hardware.pinN;
 interruptPin <- hardware.pinXA;
 
 wiz <- Wiznet(spi, interruptPin, null, resetPin);
@@ -66,131 +66,125 @@ networkSettings <-  { "gatewayIP"  : [192, 168, 1, 1],
 wiz.configureNetworkSettings(networkSettings);
 ```
 
-### setReceiveCallback(*cb*)
-The *setReceiveCallback()* method takes one required parameter: a callback function that will be called whenever data is received.  The callback function takes two required parameters: the socket the data was received from, and the data received.
+###setNumberOfAvailbleConnections(*numConnections*)
+The *setNumberOfAvailbleConnections()* method enables interrupt and configures memory for the number of connections passed in.  This method returns the actual number of connections configured.  By default one connection is configured.  If you wish to use more than one connection configure by using this method.
 
 #####Example Code:
 ```squirrel
-function logIncommingData(socket, data) {
-    server.log("Socket " + socket + ": received data: " + data);
-}
-
-wiz.setReceiveCallback(logIncommingData);
+wiz.setNumberOfAvailbleConnections(3);
 ```
 
-### setDisconnectCallback(*cb*)
-The *setDisconnectCallback()* method takes one required parameter: a callback function that will be called whenever the disconnect interrupt is triggered.  The callback function takes one required parameter: the socket that disconnected.
-
-#####Example Code:
-```squirrel
-wiz.setDisconnectCallback(function(socket) {
-    connectionSettings.socket <- socket;
-    // try reopening a connection after waiting 5s
-    imp.wakeup(5, function() {
-        wiz.openConnection(connectionSettings);
-    })
-});
-```
-
-### setSocketInterrupts(*socketInts*)
-The *setDisconnectCallback()* method takes one required parameter: the socket interrupt(s) that should be enabled.  To select the socket interrupts or together the constants in the table below.  By default socket 1 and 2 interrupts are enabled.
-
-#### Socket Interrupt Constants
-| Constant | Descrtiption |
-| ------------ | ---------------- |
-| S0_INT_TYPE | Enables Socket 0 interrupt |
-| S1_INT_TYPE | Enables Socket 1 interrupt |
-| S2_INT_TYPE | Enables Socket 2 interrupt |
-| S3_INT_TYPE | Enables Socket 3 interrupt |
-| NONE_INT_TYPE | Disables all socket interrupts |
-
-#####Example Code:
-```squirrel
-// enable all socket interrupts
-wiz.setSocketInterrupts(S0_INT_TYPE | S1_INT_TYPE | S2_INT_TYPE | S3_INT_TYPE);
-```
-
-### openConnection(*connectionSettings*)
-The *openConnection()* method takes one required parameter: a *connectionSettings* table.  See the Connection Settings chart below for the required parameters.
+### openConnection(*connectionSettings[, callback]*)
+The *openConnection()* method takes one required parameter: a *connectionSettings* table, see the Connection Settings chart below for the required parameters, and one optional parameter: a callback function that is executed when either the *connected* or *timeout* interrupt is triggered.  The callback function takes two required parameters: error, a string if an error occured, and connection. If no error is encountered then the *error* parameter will be `null`. The *connection* parameter is a connection object that is needed to transmit data, close the connection etc.  The openConnection method also returns the connection object.
 
 #### Connection Settings
 | Key | Value Type | Description |
 | ----- | -------- | --------------- |
-| socket | integer | Socket (0-3) to open the connection on |
-| sourcePort | array of 2 integers | The source port.  For port 4242 pass in array: [0x10, 0x92] |
 | destIP | array of 4 integers | The destination IP address. For IP address 192.168.1.42 pass in array:  [192, 168, 1, 42] |
 | destPort | array of 2 integers | The destination port.  For port 4242 pass in array: [0x10, 0x92] |
 
 #####Example Code:
 ```squirrel
-connectionSettings <- { "socket"     : 0,
-                        "sourcePort" : [0x10, 0x92],
-                        "destIP"     : [192, 168, 1, 42],
+connectionSettings <- {"destIP"    : [192, 168, 1, 42],
                         "destPort"   : [0x10, 0x92]
                       };
 
-wiz.openConnection(connectionSettings)
+wiz.openConnection(connectionSettings, function(err, connection) {
+    wiz.setReceiveCallback(connection, logResponseData);
+    wiz.transmit(connection, transmitData);
+})
 ```
 
-### closeConnection(*socket*)
-The *openConnection()* method takes one required parameter: the *socket* to close the connection on.  Socket should be an integer 0-3.
+### closeConnection(*connection*)
+The *closeConnection()* method takes one required parameter: the *connection* object on which to close the connection.
 
 #####Example Code:
 ```squirrel
-wiz.closeConnection(0);
+local connection = wiz.openConnection(connectionSettings);
+wiz.closeConnection(connection);
 ```
 
-### transmit(*socket, transmitData[, cb]*)
-The *transmit()* method takes two required parameters: the *socket* an integer(0-3) to transmit data on, and *transmitData* an array bytes, and one optional parameter *cb*: a callback function that is executed when transmission is complete.  The callback function takes two required parameters: *error*, a string if a transmision error occured, and *response* a string if data transmission is successful.
+### setReceiveCallback(*connection, cb*)
+The *setReceiveCallback()* method takes two required parameters: a connection object, and a callback function that will be executed whenever the *data received* interrupt is triggered. The callback function takes three required parameters: error, the connection object that data was received from, and the data received.
 
 #####Example Code:
 ```squirrel
-transmitData <- [0x1A, 0x00, 0x0C, 0x00, 0x48, 0x5D, 0x24, 0x00,
+function logIncommingData(error, connection, data) {
+    server.log("Socket " + connection.socket + ": received data: " + data);
+}
+
+wiz.openConnection(connectionSettings, function(err, connection) {
+    wiz.setReceiveCallback(connection, logIncommingData);
+});
+```
+
+### setDisconnectCallback(*connection, cb*)
+The *setDisconnectCallback()* method takes two required parameters: connection object, and a callback function that will be executed whenever the *diconnected* interrupt is triggered.  The callback function takes one required parameter: the connection object that disconnected.
+
+#####Example Code:
+```squirrel
+local connect = wiz.openConnection(connectionSettings);
+
+wiz.setDisconnectCallback(connect, function(connection) {
+    server.log("Disconnect on socket " + connection.socket);
+    // try reopening a connection after waiting 5s
+    imp.wakeup(5, function() {
+        connect = wiz.openConnection(connectionSettings);
+    })
+});
+```
+
+### transmit(*connection, transmitData[, cb]*)
+The *transmit()* method takes two required parameters: the *connection* to transmit data on, and *transmitData* an blob or array containing the bytes to transmit, and one optional parameter *cb*: a callback function that is executed when the *send complete* or *timeout* interrupt is triggered.  The callback function takes two required parameters: *error*, a string if a timeout error occured, and the *connection* object.
+
+#####Example Code:
+```squirrel
+transmitData1 <- [0x1A, 0x00, 0x0C, 0x00, 0x48, 0x5D, 0x24, 0x00,
                  0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x22,
                  0x8E, 0x53, 0xAF, 0xF0, 0x00, 0x00, 0x00, 0x00,
                  0x00, 0x00];
 
-wiz.transmit(0, transmitData, function(err, res) {
-    if (err) server.error(err);
-    if (res == "OK") {
-        server.log("ok to send next transmission...");
-        wiz.transmit(0, [0x66, 0x66, 0x66], function(err, res) {
-            if (err) server.error(err);
-            if (res == "OK") server.log("second transmision sent...");
-        })
+transmitData2 <- [0x1A, 0x00, 0x0C, 0x00, 0x48, 0x5D, 0x24, 0x00,
+                 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x84,
+                 0x8A, 0x73, 0x0F, 0xF3, 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00]
+
+wiz.openConnection(connectionSettings, function(error, connection) {
+    if (error) {
+        server.error(error);
+        return;
     }
-});
+    wiz.transmit(connection, transmitData1, function(err, connect) {
+        if (err) {
+            server.error(err);
+            return;
+        }
+        server.log("first transmision sent...");
+        server.log("ok to send next transmission...");
+        wiz.transmit(connect,  transmitData2, function(e, c) {
+            if (e) {
+                server.error(e);
+                return;
+            }
+            server.log("second transmision sent...");
+        })
+    });
+})
 ```
 
-### receive(*socket[, cb]*)
-The *receive()* method takes one required parameter: the *socket* an integer(0-3) to check for data on, and one optional parameter *cb*: a callback function that is executed if data is received.  The callback function takes one required parameters: the socket on which the data was received. If a callback is passed into receive it will superceede the callback set by setReceiveCallback.
+### receive(*connection[, cb]*)
+The *receive()* method takes one required parameter: the *connection* object to check for data on, and one optional parameter *cb*: a callback function that is executed if data is received.  The callback function takes three required parameters: *error*, null or a string if an error was encountered, the *connection* object on which the data was received, and the *data* received. If a callback is passed into *receive()* it will superceede the callback set by setReceiveCallback for only this data lookup.
 
-**Note:** If socket interrupts are enabled there is no need to call receive.  The interrupt and receive callback will handle incoming data.
-
+**Note:** There is no real need to call receive.  The interrupt and receive callback should handle incoming data.
 
 ### reset()
 The *reset()* method resets all registers to their defaults.  If a reset pin is passed in a harware reset will be invoked, if no reset pin is passed in a software reset will be called.
 
+**Note:** the datasheet for the W5500 states that software reset is buggy and should not be used.
+
 #####Example Code:
 ```squirrel
 wiz.reset();
-```
-
-### configureSocketMemory(*txMem, rxMem*)
-By default the W5100 equally distributes the socket memory.  Each socket is given a 2k buffer for transmit and receive.  To change the memory allotted use the *configureSocketMemory()* method.  This method takes two required parameters: an array with the transmit memory settings and an array with the receive memory settings.  Supported memory settings are 0k, 1k, 2k, 4k, 8k.  The total memory for the four sockets cannot exceede 8k.  Memory is assigned to sockets starting with socket 0.  When the 8k memory allotment is assigned remaining sockets will not have any memory, and should not be used.
-
-####Memory Settings
-| Parameter | Data Type | Descrtiption |
-| ----- | --------------- | ---------------- |
-| *txMem* | array of 4 integers | The transmit memory setting for each socket.  The index of the array corresponds to each socket. |
-| *rxMem* | array of 4 integers | The receive memory setting for each socket.  The index of the array corresponds to each socket. |
-
-#####Example Code:
-```squirrel
-txMem <- [4, 2, 1, 1];
-rxMem <- [4, 2, 1, 1];
-
-wiz.configureSocketMemory(txMem, rxMem);
 ```
 
 ### dataWaiting(*socket*)
@@ -198,9 +192,6 @@ The *dataWaiting()* method returns a boolean, if data is available.  It takes on
 
 ### connectionEstablished(*socket*)
 The *connectionEstablished()* method returns a boolean, if the current state of the connection is *established*.  It takes one required parameter: the *socket* an integer(0-3) on which to check the connection.
-
-### connectionClosed(*socket*)
-The *connectionClosed()* method returns a boolean, if the current state of the connection is *closed*.  It takes one required parameter: the *socket* an integer(0-3) on which to check the connection.
 
 
 ## Extended Example
@@ -227,18 +218,8 @@ interruptPin <- hardware.pin1;
 
 gatewayIP <- [192, 168, 1, 1];
 subnetAddr <- [255, 255, 255, 0];
-
 wnIP <- [192, 168, 1, 2];
 wnHWAddr <- [0x00, 0x08, 0xDC, 0x00, 0x00, 0x01];
-
-microTechIP <- [192, 168, 1, 42];
-microTechPort <- [0x10, 0x92]; //4242
-
-// not needed??
-// microTechMac <- [0x00, 0xA0, 0x03, 0x09, 0x09, 0xA6]; //really the microTech
-// microTechMac <- [0x38, 0xC9, 0x86, 0x40, 0x60, 0x18]; // thunderbolt adapter computer
-
-local socket_0 = 0;
 
 networkSettings <-  { "gatewayIP"  : gatewayIP,
                       "sourceAddr" : wnHWAddr,
@@ -246,14 +227,13 @@ networkSettings <-  { "gatewayIP"  : gatewayIP,
                       "sourceIP"   : wnIP
                     };
 
-connectionSettings <- { "socket"     : socket_0,
-                        "sourcePort" : microTechPort,
-                        "destIP"     : microTechIP,
-                        "destPort"   : microTechPort
-                      };
 
-txMem <- [4, 4, 0, 0];
-rxMem <- [4, 4, 0, 0];
+destIP <- [192, 168, 1, 42];
+destPort <- [0x10, 0x92]; //4242
+
+connectionSettings <- { "destIP"     : destIP,
+                        "destPort"   : destPort
+                      };
 
 
 // RUNTIME VARIABLES / SUPPORTING FUNCTIONS
@@ -264,48 +244,27 @@ transmitData <- [0x1A, 0x00, 0x0C, 0x00, 0x48, 0x5D, 0x24, 0x00,
                  0x8E, 0x53, 0xAF, 0xF0, 0x00, 0x00, 0x00, 0x00,
                  0x00, 0x00];
 
-function logData(socket, data) {
-    server.log("Socket " + socket + ": received data: " + data);
+function sendResToAgent(err, receivedConnection, response) {
+    local data = (err) ? {"error" : err} : response;
+    // send response to agent
+    agent.send("response", data);
 }
-
-function logreg(reg) {
-    server.log(format("0x%X", reg));
-}
-
-function logtable(table) {
-    foreach (k, v in table) {
-        server.log(k + ": " + v);
-    }
-}
-
 
 // RUNTIME CODE
 // ------------------------------------------------
 
 wiz <- Wiznet(spi, interruptPin, cs, resetPin);
 
-wiz.configureNetworkSettings(networkSettings)
-wiz.configureSocketMemory(txMem, rxMem);
-wiz.setReceiveCallback(logData);
-
-// wiz.setDisconnectCallback(function(socket) {
-//     connectionSettings.socket <- socket;
-//     // try reopening a connection
-//     imp.wakeup(5, function() {
-//         wiz.openConnection(connectionSettings);
-//     })
-// });
-
-wiz.openConnection(connectionSettings)
-wiz.transmit(socket_0, transmitData, function(err, res) {
-    if (err) server.error(err);
-    if (res == "OK") {
-        server.log("ok to send next transmission...");
-        wiz.transmit(socket_0, [0x66, 0x66, 0x66], function(err, res) {
-            if (err) server.error(err);
-            if (res == "OK") server.log("second transmision sent...");
-        })
+wiz.configureNetworkSettings(networkSettings);
+wiz.openConnection(connectionSettings, function(error, connection) {
+    if (error) {
+        server.error(error);
+        return;
     }
+    wiz.setReceiveCallback(connection, sendResToAgent);
+    wiz.transmit(connection, transmitData, function(err, connect) {
+        if (err) server.error(err);
+    })
 });
 ```
 
