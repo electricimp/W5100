@@ -1263,7 +1263,7 @@ class W5100.Driver {
      *          sw(optional) - boolean if true forces a software reset
      **************************************************************************/
     function reset(sw = false) {
-        if (sw || _resetPin != null) {
+        if (sw || _resetPin == null) {
             setMode(SW_RESET);
             imp.sleep(0.01);
         } else {
@@ -1806,11 +1806,11 @@ class W5100.API {
             if ( dataWaiting(socket) ) {
                 if(cb) {
                     imp.wakeup(0, function() {
-                        cb(null, socket, _wiz.readRxData(socket));
+                        cb(null, connection, _wiz.readRxData(socket));
                     }.bindenv(this));
                 } else if (receiveHandler) {
                     imp.wakeup(0, function() {
-                        receiveHandler(null, socket, _wiz.readRxData(socket));
+                        receiveHandler(null, connection, _wiz.readRxData(socket));
                     }.bindenv(this));
                 }
             }
