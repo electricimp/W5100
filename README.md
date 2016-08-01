@@ -2,7 +2,7 @@
 
 Connection API for Wiznet chip [W5100](http://www.wiznet.co.kr/wp-content/uploads/wiznethome/Chip/W5100/Document/W5100_Datasheet_v1.2.6.pdf).  The W5100 chip is a hardwired TCP/IP embedded Ethernet controller that enables easier Internet connection for embedded systems.  This library supports the SPI integration with the W5100.
 
-**To add this code to your project, copy and paste the entire contents of the ** `W5100.class.nut` ** file just below your library *#require* statements at the top of your device code.**
+**To add this code to your project, copy and paste the entire contents of the** `W5100.class.nut` **file just below your library *#require* statements at the top of your device code.**
 
 ## Class Usage
 
@@ -85,7 +85,7 @@ The *openConnection()* method takes one required parameter: a *connectionSetting
 
 #####Example Code:
 ```squirrel
-connectionSettings <- {"destIP"    : [192, 168, 1, 42],
+connectionSettings <- { "destIP"     : [192, 168, 1, 42],
                         "destPort"   : [0x10, 0x92]
                       };
 
