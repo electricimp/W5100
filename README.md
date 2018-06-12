@@ -1,4 +1,4 @@
-#Wiznet_5100
+# Wiznet_5100
 
 Connection API for Wiznet chip [W5100](http://www.wiznet.co.kr/wp-content/uploads/wiznethome/Chip/W5100/Document/W5100_Datasheet_v1.2.6.pdf).  The W5100 chip is a hardwired TCP/IP embedded Ethernet controller that enables easier Internet connection for embedded systems.  This library supports the SPI integration with the W5100.
 
